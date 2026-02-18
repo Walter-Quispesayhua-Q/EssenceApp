@@ -2,7 +2,7 @@ package com.essence.essenceapp.feature.song.model
 
 import java.time.LocalDate
 
-data class SongResponseSimpleDTO(
+data class SongSimple(
     val id: Long,
     val durationMs: Int,
     val hlsMasterKey: String,

@@ -1,7 +1,7 @@
 package com.essence.essenceapp.feature.album.model
 
 import com.essence.essenceapp.feature.artist.model.ArtistResponseSimpleDTO
-import com.essence.essenceapp.feature.song.model.SongResponseSimpleDTO
+import com.essence.essenceapp.feature.song.model.SongSimple
 import java.time.LocalDate
 
 data class AlbumResponseDTO(
@@ -12,5 +12,5 @@ data class AlbumResponseDTO(
     val releaseDate: LocalDate,
 
     val artists: List<ArtistResponseSimpleDTO>,
-    val songs: List<SongResponseSimpleDTO>
+    val songs: List<SongSimple>
 )
