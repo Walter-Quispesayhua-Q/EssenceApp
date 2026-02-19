@@ -2,11 +2,11 @@ package com.essence.essenceapp.feature.album.model
 
 import java.time.LocalDate
 
-data class AlbumResponseSimpleDTO(
+data class AlbumSimple(
     val id: Long,
     val title: String,
-    val imageKey: String,
+    val imageKey: String?,
     val albumUrl: String,
-    val artists: List<String>,
-    val release: LocalDate
+    val artists: List<String>?,
+    val release: LocalDate?
 )

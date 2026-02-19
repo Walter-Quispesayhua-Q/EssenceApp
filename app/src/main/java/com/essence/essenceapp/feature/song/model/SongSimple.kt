@@ -6,10 +6,10 @@ data class SongSimple(
     val id: Long,
     val durationMs: Int,
     val hlsMasterKey: String,
-    val imageKey: String,
-    val songType: String,
-    val totalPlays: Long,
+    val imageKey: String?,
+    val songType: String?,
+    val totalPlays: Long?,
     val artistName: String,
-    val albumName: String,
-    val releaseDate: LocalDate
+    val albumName: String?,
+    val releaseDate: LocalDate?
 )

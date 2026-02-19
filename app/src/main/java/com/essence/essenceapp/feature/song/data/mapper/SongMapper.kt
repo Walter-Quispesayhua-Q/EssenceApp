@@ -1,9 +1,11 @@
 package com.essence.essenceapp.feature.song.data.mapper
 
 import com.essence.essenceapp.feature.song.data.dto.SongResponseApiDTO
+import com.essence.essenceapp.feature.artist.data.mapper.artistToSimpleDomain
+import com.essence.essenceapp.feature.album.data.mapper.albumToSimpleDomain
 import com.essence.essenceapp.feature.song.model.Song
 
-fun SongResponseApiDTO.toDomain(): Song? {
+fun SongResponseApiDTO.songToDomain(): Song? {
     return Song(
         id = this.id ?: return null,
         title = this.title ?: return null,
@@ -12,7 +14,9 @@ fun SongResponseApiDTO.toDomain(): Song? {
         imageKey = this.imageKey,
         songType = this.songType,
         totalPlays = this.totalPlays,
-
+        artists = this.artists?.mapNotNull
+        { it.artistToSimpleDomain() } ?: emptyList(),
+        album = this.album?.albumToSimpleDomain(),
         releaseDate = this.releaseDate
     )
 }
