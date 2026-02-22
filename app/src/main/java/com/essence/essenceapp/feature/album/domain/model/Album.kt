@@ -1,7 +1,7 @@
-package com.essence.essenceapp.feature.album.model
+package com.essence.essenceapp.feature.album.domain.model
 
-import com.essence.essenceapp.feature.artist.model.ArtistSimple
-import com.essence.essenceapp.feature.song.model.SongSimple
+import com.essence.essenceapp.feature.artist.domain.model.ArtistSimple
+import com.essence.essenceapp.feature.song.domain.model.SongSimple
 import java.time.LocalDate
 
 data class Album(

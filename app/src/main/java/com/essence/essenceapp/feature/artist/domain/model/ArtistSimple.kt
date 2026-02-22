@@ -1,4 +1,4 @@
-package com.essence.essenceapp.feature.artist.model
+package com.essence.essenceapp.feature.artist.domain.model
 
 data class ArtistSimple(
     val id: Long,

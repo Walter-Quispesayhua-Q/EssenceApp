@@ -1,6 +1,6 @@
-package com.essence.essenceapp.feature.artist.model
+package com.essence.essenceapp.feature.artist.domain.model
 
-import com.essence.essenceapp.feature.song.model.SongSimple
+import com.essence.essenceapp.feature.song.domain.model.SongSimple
 
 data class Artist(
     val id: Long,

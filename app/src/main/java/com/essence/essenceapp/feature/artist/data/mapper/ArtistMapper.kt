@@ -1,7 +1,7 @@
 package com.essence.essenceapp.feature.artist.data.mapper
 
 import com.essence.essenceapp.feature.artist.data.dto.ArtistResponseApiDTO
-import com.essence.essenceapp.feature.artist.model.Artist
+import com.essence.essenceapp.feature.artist.domain.model.Artist
 import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
 
 fun ArtistResponseApiDTO.artistToDomain(): Artist? {

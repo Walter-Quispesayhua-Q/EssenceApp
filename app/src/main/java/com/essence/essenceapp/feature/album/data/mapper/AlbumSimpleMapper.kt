@@ -1,7 +1,7 @@
 package com.essence.essenceapp.feature.album.data.mapper
 
 import com.essence.essenceapp.feature.album.data.dto.AlbumResponseSimpleApiDTO
-import com.essence.essenceapp.feature.album.model.AlbumSimple
+import com.essence.essenceapp.feature.album.domain.model.AlbumSimple
 
 fun AlbumResponseSimpleApiDTO.albumToSimpleDomain(): AlbumSimple? {
     return AlbumSimple(

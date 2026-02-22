@@ -3,7 +3,7 @@ package com.essence.essenceapp.feature.song.data.mapper
 import com.essence.essenceapp.feature.song.data.dto.SongResponseApiDTO
 import com.essence.essenceapp.feature.artist.data.mapper.artistToSimpleDomain
 import com.essence.essenceapp.feature.album.data.mapper.albumToSimpleDomain
-import com.essence.essenceapp.feature.song.model.Song
+import com.essence.essenceapp.feature.song.domain.model.Song
 
 fun SongResponseApiDTO.songToDomain(): Song? {
     return Song(

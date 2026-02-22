@@ -1,7 +1,7 @@
 package com.essence.essenceapp.feature.song.data.mapper
 
 import com.essence.essenceapp.feature.song.data.dto.SongResponseSimpleApiDTO
-import com.essence.essenceapp.feature.song.model.SongSimple
+import com.essence.essenceapp.feature.song.domain.model.SongSimple
 
 fun SongResponseSimpleApiDTO.songToSimpleDomain(): SongSimple? {
     return SongSimple(

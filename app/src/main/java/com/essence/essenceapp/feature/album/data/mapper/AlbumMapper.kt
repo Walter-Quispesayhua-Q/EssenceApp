@@ -1,7 +1,7 @@
 package com.essence.essenceapp.feature.album.data.mapper
 
 import com.essence.essenceapp.feature.album.data.dto.AlbumResponseApiDTO
-import com.essence.essenceapp.feature.album.model.Album
+import com.essence.essenceapp.feature.album.domain.model.Album
 import com.essence.essenceapp.feature.artist.data.mapper.artistToSimpleDomain
 import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
 

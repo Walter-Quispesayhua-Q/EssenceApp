@@ -1,4 +1,4 @@
-package com.essence.essenceapp.feature.album.model
+package com.essence.essenceapp.feature.album.domain.model
 
 import java.time.LocalDate
 
