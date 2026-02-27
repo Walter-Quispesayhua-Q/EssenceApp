@@ -12,16 +12,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun HomeScreen(
-    uiState: HomeUiState,
-    onRefresh: () -> Unit
-) {
-    when (uiState) {
+fun HomeScreen(viewModel: HomeViewModel){
+
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    when (val currentState = state) {
         is HomeUiState.Loading -> {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -30,10 +32,7 @@ fun HomeScreen(
                 CircularProgressIndicator()
             }
         }
-
         is HomeUiState.Success -> {
-            val home = uiState.homeData
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -41,24 +40,24 @@ fun HomeScreen(
             ) {
                 Text(
                     text = "EssenceApp - Home",
-                    style = MaterialTheme.typography.displayMedium
+                    style =
+                        MaterialTheme.typography.displayMedium
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Songs: ${home.songs.size}")
-                Text("Albums: ${home.albums.size}")
-                Text("Artists: ${home.artists.size}")
+                Text("Songs: ${currentState.homeData.songs.size}")
+                Text("Albums: ${currentState.homeData.albums.size}")
+                Text("Artists: ${currentState.homeData.artists.size}")
             }
         }
-
         is HomeUiState.Error -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(text = uiState.message)
-                Button(onClick = onRefresh) {
+                Text(text = currentState.message)
+                Button(onClick = {viewModel.onRefresh()}) {
                     Text("Reintentar")
                 }
             }

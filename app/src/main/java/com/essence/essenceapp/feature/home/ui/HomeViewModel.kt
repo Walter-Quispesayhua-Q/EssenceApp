@@ -15,28 +15,27 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-
     init {
-        loadHome()
+        loadData()
     }
 
-    private fun loadHome() {
+    private fun loadData() {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
             try {
-                val result = homeRepository.getHome()
-                if (result != null) {
-                    _uiState.value = HomeUiState.Success(result)
+                val data = homeRepository.getHome()
+                if (data != null) {
+                    _uiState.value = HomeUiState.Success(homeData = data)
                 } else {
-                    _uiState.value = HomeUiState.Error("No se encontraron datos")
+                    _uiState.value = HomeUiState.Error(message = "No se encontraron datos")
                 }
             } catch (e: Exception) {
-                _uiState.value = HomeUiState.Error(
-                    e.message ?: "Error desconocido"
-                )
+                _uiState.value = HomeUiState.Error(message = e.message ?: "Error del sistema")
             }
         }
     }
 
-    fun onRefresh() {loadHome()}
+    fun onRefresh() {
+        loadData()
+    }
 }
