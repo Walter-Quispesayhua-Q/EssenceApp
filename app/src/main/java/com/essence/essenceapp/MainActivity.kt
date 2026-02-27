@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Text
+import com.essence.essenceapp.feature.home.ui.HomeScreen
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -17,6 +18,7 @@ class MainActivity : ComponentActivity() {
             EssenceAppTheme {
                 Text("EssenceApp")
             }
+            HomeScreen()
         }
     }
 }
