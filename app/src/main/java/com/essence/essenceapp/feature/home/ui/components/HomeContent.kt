@@ -132,7 +132,7 @@ private fun HomeSuccessContent(
     ) {
         item {
             HomeSectionTitle(
-                title = "Canciones",
+                title = "Canciones Mas Escuchadas",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
@@ -146,7 +146,7 @@ private fun HomeSuccessContent(
 
         item {
             HomeSectionTitle(
-                title = "Álbumes",
+                title = "Álbumes Mas Escuchadas",
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
@@ -160,7 +160,7 @@ private fun HomeSuccessContent(
 
         item {
             HomeSectionTitle(
-                title = "Artistas",
+                title = "Artistas Mas Escuchadas",
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
@@ -192,20 +192,14 @@ private fun SongsSection(
     songs: List<SongSimple>,
     modifier: Modifier = Modifier
 ) {
-    LazyRow(
-        modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(
-            items = songs,
-            key = { it.id }
-        ) { song ->
-            Box(
-                modifier = Modifier.width(280.dp)
-            ) {
-                CompactSongContent(song = song)
-            }
+        songs.take(5).forEach { song ->
+            CompactSongContent(song = song)
         }
     }
 }
