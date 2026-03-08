@@ -1,7 +1,7 @@
-package com.essence.essenceapp.feature.register.data.api
+package com.essence.essenceapp.feature.auth.register.data.api
 
-import com.essence.essenceapp.feature.register.data.dto.RegisterApiDTO
-import com.essence.essenceapp.feature.register.data.dto.RegisterRequestApiDTO
+import com.essence.essenceapp.feature.auth.register.data.dto.RegisterApiDTO
+import com.essence.essenceapp.feature.auth.register.data.dto.RegisterRequestApiDTO
 import com.essence.essenceapp.shared.data.dto.ApiResponseDto
 import retrofit2.http.Body
 import retrofit2.http.GET

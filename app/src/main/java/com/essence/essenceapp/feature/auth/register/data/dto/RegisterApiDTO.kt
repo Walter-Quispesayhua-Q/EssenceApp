@@ -1,4 +1,4 @@
-package com.essence.essenceapp.feature.register.data.dto
+package com.essence.essenceapp.feature.auth.register.data.dto
 
 import kotlinx.serialization.Serializable
 
