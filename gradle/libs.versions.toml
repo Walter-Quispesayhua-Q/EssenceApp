@@ -39,6 +39,7 @@ retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit
 hilt-android = {group = "com.google.dagger", name = "hilt-android", version.ref = "hiltV"}
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hiltV"}
 hilt-navigation-compose = {group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose"}
+androidx-compose-material-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

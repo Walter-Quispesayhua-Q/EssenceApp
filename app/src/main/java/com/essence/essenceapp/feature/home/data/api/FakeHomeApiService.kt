@@ -13,6 +13,7 @@ class FakeHomeApiService : HomeApiService {
             songs = listOf(
                 SongResponseSimpleApiDTO(
                     id = 1,
+                    title = "jb",
                     durationMs = 354000,
                     hlsMasterKey = "fake-key-001",
                     imageKey = "fake-image-001",
@@ -24,6 +25,7 @@ class FakeHomeApiService : HomeApiService {
                 ),
                 SongResponseSimpleApiDTO(
                     id = 2,
+                    title = "jb3",
                     durationMs = 390000,
                     hlsMasterKey = "fake-key-002",
                     imageKey = "fake-image-002",

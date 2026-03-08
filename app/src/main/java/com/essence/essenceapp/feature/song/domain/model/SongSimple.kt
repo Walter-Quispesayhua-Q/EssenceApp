@@ -4,6 +4,7 @@ import java.time.LocalDate
 
 data class SongSimple(
     val id: Long,
+    val title: String,
     val durationMs: Int,
     val hlsMasterKey: String,
     val imageKey: String?,

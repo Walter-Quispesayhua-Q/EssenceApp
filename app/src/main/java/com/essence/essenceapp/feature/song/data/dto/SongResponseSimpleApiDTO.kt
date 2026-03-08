@@ -4,6 +4,7 @@ import java.time.LocalDate
 
 data class SongResponseSimpleApiDTO(
     val id: Long?,
+    val title: String?,
     val durationMs: Int?,
     val hlsMasterKey: String?,
     val imageKey: String?,
