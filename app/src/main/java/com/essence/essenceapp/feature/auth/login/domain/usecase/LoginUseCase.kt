@@ -17,7 +17,7 @@ class LoginUseCase(
             return Result.failure(Exception("La contraseña es requerida"))
         }
 
-       val token = loginRepository.login(login)
+        val token = loginRepository.login(login)
         return if (token != null) {
             Result.success(token)
         } else {
