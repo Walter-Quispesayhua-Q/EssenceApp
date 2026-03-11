@@ -3,6 +3,7 @@ package com.essence.essenceapp.feature.playlist.data.api
 import com.essence.essenceapp.feature.playlist.data.dto.PlaylistRequestApiDTO
 import com.essence.essenceapp.feature.playlist.data.dto.PlaylistResponseApiDTO
 import com.essence.essenceapp.feature.playlist.data.dto.PlaylistResponseSimpleApiDTO
+import com.essence.essenceapp.feature.playlist.data.dto.PlaylistsSimplesResponseApiDTO
 import com.essence.essenceapp.feature.song.data.dto.SongResponseSimpleApiDTO
 import com.essence.essenceapp.shared.data.dto.ApiResponseDto
 import retrofit2.http.Body
@@ -48,4 +49,7 @@ interface PlaylistApiService {
         @Path("id") id: Long, @Path("songId") songId: Long
     )
 
+    //lists
+    @GET("$BASE/lists/{id}")
+    suspend fun getPlaylistsByUser(@Path("id") userId: Long): PlaylistsSimplesResponseApiDTO?
 }

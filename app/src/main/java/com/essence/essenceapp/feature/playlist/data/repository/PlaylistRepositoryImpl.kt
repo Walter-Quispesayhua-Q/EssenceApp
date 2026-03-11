@@ -7,9 +7,11 @@ import com.essence.essenceapp.feature.playlist.data.mapper.playlistToSimpleDomai
 import com.essence.essenceapp.feature.playlist.domain.model.Playlist
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistRequest
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistSimple
+import com.essence.essenceapp.feature.playlist.domain.model.PlaylistsSimples
 import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistRepository
 import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
+import com.essence.essenceapp.feature.playlist.data.mapper.playlistsSimplesToDomain
 
 class PlaylistRepositoryImpl(
     private val apiService: PlaylistApiService
@@ -61,6 +63,13 @@ class PlaylistRepositoryImpl(
 
     override suspend fun deleteSongOfPlaylist(id: Long, songId: Long){
         apiService.deleteSongOfPlaylist(id, songId)
+    }
+
+    //lists
+
+    override suspend fun getPlaylistsByUser(userId: Long): PlaylistsSimples? {
+        val response = apiService.getPlaylistsByUser(userId)
+        return response?.playlistsSimplesToDomain()
     }
 
 }

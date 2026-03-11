@@ -4,4 +4,8 @@ data class PlaylistRequest(
     val title: String,
     val description: String? = null,
     val isPublic: Boolean
-)
+) {
+    val hasChanges: Boolean
+        get() = title.isNotBlank() ||
+                !description.isNullOrBlank()
+}
