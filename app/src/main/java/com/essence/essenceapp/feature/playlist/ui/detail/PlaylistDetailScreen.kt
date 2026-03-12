@@ -29,7 +29,7 @@ fun PlaylistDetailScreen(
             PlaylistDetailTopBar(
                 title = (state as? PlaylistDetailUiState.Success)?.playlist?.title ?: "Playlist",
                 onBack = onBack,
-                onEdit = { onNavigateToEdit(playlistId) }
+//                onEdit = { onNavigateToEdit(playlistId) }
             )
         }
     ) { innerPadding ->

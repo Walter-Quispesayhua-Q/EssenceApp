@@ -1,5 +1,6 @@
 package com.essence.essenceapp.feature.artist.data.mapper
 
+import com.essence.essenceapp.feature.album.data.mapper.albumToSimpleDomain
 import com.essence.essenceapp.feature.artist.data.dto.ArtistResponseApiDTO
 import com.essence.essenceapp.feature.artist.domain.model.Artist
 import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
@@ -15,7 +16,7 @@ fun ArtistResponseApiDTO.artistToDomain(): Artist? {
         songs = this.songs?.mapNotNull
         { it.songToSimpleDomain() } ?: emptyList(),
         albums = this.albums?.mapNotNull
-        { it.artistToSimpleDomain() } ?: emptyList()
+        { it.albumToSimpleDomain() } ?: emptyList()
 
     )
 }

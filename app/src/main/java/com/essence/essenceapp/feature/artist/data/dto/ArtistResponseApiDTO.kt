@@ -1,5 +1,6 @@
 package com.essence.essenceapp.feature.artist.data.dto
 
+import com.essence.essenceapp.feature.album.data.dto.AlbumResponseSimpleApiDTO
 import com.essence.essenceapp.feature.song.data.dto.SongResponseSimpleApiDTO
 
 data class ArtistResponseApiDTO(
@@ -11,5 +12,5 @@ data class ArtistResponseApiDTO(
     val country: String?,
 
     val songs: List<SongResponseSimpleApiDTO>?,
-    val albums: List<ArtistResponseSimpleApiDTO>?
+    val albums: List<AlbumResponseSimpleApiDTO>?
 )

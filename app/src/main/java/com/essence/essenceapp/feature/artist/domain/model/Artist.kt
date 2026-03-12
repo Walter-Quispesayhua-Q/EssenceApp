@@ -1,5 +1,6 @@
 package com.essence.essenceapp.feature.artist.domain.model
 
+import com.essence.essenceapp.feature.album.domain.model.AlbumSimple
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
 
 data class Artist(
@@ -10,5 +11,5 @@ data class Artist(
     val artistUrl: String,
     val country: String?,
     val songs: List<SongSimple>?,
-    val albums: List<ArtistSimple>
+    val albums: List<AlbumSimple>?
 )
