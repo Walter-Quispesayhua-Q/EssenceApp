@@ -5,20 +5,28 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.essence.essenceapp.feature.home.ui.HomeScreen
+import androidx.navigation.compose.rememberNavController
+import com.essence.essenceapp.feature.auth.navigation.authGraph
+import com.essence.essenceapp.feature.home.navigation.HomeGraphRoutes
+import com.essence.essenceapp.ui.shell.MainShellScreen
+
+object RootRoutes {
+    const val MAIN_SHELL = "main_shell"
+}
 
 @Composable
 fun AppNavHost(
-    navHostController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    val navController = rememberNavController()
     NavHost(
-        navController = navHostController,
-        startDestination = AppNavRoutes.HOME,
+        navController = navController,
+        startDestination = RootRoutes.MAIN_SHELL,
         modifier = modifier
     ) {
-        composable(route = AppNavRoutes.HOME) {
-            HomeScreen()
+        composable(route = RootRoutes.MAIN_SHELL) {
+            MainShellScreen()
         }
+        authGraph()
     }
 }

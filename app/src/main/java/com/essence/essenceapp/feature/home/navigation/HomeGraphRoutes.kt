@@ -1,5 +1,5 @@
 package com.essence.essenceapp.feature.home.navigation
 
-object GraphRoutes {
+object HomeGraphRoutes {
     const val HOME_GRAPH = "home_graph"
 }

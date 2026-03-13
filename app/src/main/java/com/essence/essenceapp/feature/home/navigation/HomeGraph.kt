@@ -6,9 +6,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.essence.essenceapp.feature.home.ui.HomeScreen
 
-fun NavGraphBuilder.homeGraph(navController: NavController) {
+fun NavGraphBuilder.homeGraph(
+) {
     navigation(
-        route = GraphRoutes.HOME_GRAPH,
+        route = HomeGraphRoutes.HOME_GRAPH,
         startDestination = HomeRoutes.HOME
     ) {
         composable(HomeRoutes.HOME) {
