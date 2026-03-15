@@ -11,5 +11,6 @@ data class Album(
     val imageKey: String?,
     val releaseDate: LocalDate?,
     val artists: List<ArtistSimple>,
-    val songs: List<SongSimple>?
+    val songs: List<SongSimple>?,
+    val isLiked: Boolean
 )

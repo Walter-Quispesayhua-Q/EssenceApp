@@ -8,6 +8,7 @@ sealed interface SongDetailUiState {
     data class Error(val message: String) : SongDetailUiState
     data class Success(
         val song: Song,
-        val playback: PlaybackUiState
+        val playback: PlaybackUiState,
+        val isLikeSubmitting: Boolean = false
     ) : SongDetailUiState
 }

@@ -72,4 +72,11 @@ class PlaylistRepositoryImpl(
         return response?.playlistsSimplesToDomain()
     }
 
+    override suspend fun addLikePlaylist(id: Long) {
+        apiService.addLikePlaylist(id)
+    }
+
+    override suspend fun deleteLikePlaylist(id: Long) {
+        apiService.deleteLikePlaylist(id)
+    }
 }

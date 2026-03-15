@@ -23,7 +23,7 @@ fun PlaylistFormSheet(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(playlistId) {
-        playlistId?.let { viewModel.loadForEdit(it) }
+        viewModel.initialize(playlistId)
     }
 
     LaunchedEffect(state) {
@@ -35,6 +35,7 @@ fun PlaylistFormSheet(
             state = state,
             isEditing = playlistId != null,
             onAction = viewModel::onAction,
+            onDismiss = onDismiss,
             modifier = Modifier.padding(16.dp)
         )
     }

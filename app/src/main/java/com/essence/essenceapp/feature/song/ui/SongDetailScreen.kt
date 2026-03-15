@@ -41,6 +41,7 @@ fun SongDetailScreen(
                 when (action) {
                     SongDetailAction.Back -> onBack()
                     SongDetailAction.Refresh -> viewModel.onAction(action)
+                    SongDetailAction.ToggleLike -> viewModel.onAction(action)
                     is SongDetailAction.OpenArtist -> onOpenArtist(action.artistId)
                     is SongDetailAction.OpenAlbum -> onOpenAlbum(action.albumId)
                 }

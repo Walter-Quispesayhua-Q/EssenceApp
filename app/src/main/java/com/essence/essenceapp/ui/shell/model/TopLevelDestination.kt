@@ -8,18 +8,18 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.essence.essenceapp.feature.home.navigation.HomeGraphRoutes
 import com.essence.essenceapp.feature.playlist.navigation.PlaylistGraphRoutes
+import com.essence.essenceapp.feature.profile.navigation.ProfileGraphRoutes
 import com.essence.essenceapp.feature.search.navigation.SearchGraphRoutes
 
 data class TopLevelDestination(
     val graphRoute: String,
     val label: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val requiresAuth: Boolean = false
 )
 
 object TopLevelDestinations {
-    private const val PROFILE_GRAPH_ROUTE = "profile_graph"
-
-    val items: List<TopLevelDestination> = listOf(
+    private val publicItems: List<TopLevelDestination> = listOf(
         TopLevelDestination(
             graphRoute = HomeGraphRoutes.HOME_GRAPH,
             label = "Home",
@@ -29,16 +29,27 @@ object TopLevelDestinations {
             graphRoute = SearchGraphRoutes.SEARCH_GRAPH,
             label = "Search",
             icon = Icons.Default.Search
-        ),
+        )
+    )
+
+    private val privateItems: List<TopLevelDestination> = listOf(
         TopLevelDestination(
             graphRoute = PlaylistGraphRoutes.PLAYLIST_GRAPH,
             label = "Biblioteca",
-            icon = Icons.Default.LibraryMusic
+            icon = Icons.Default.LibraryMusic,
+            requiresAuth = true
         ),
         TopLevelDestination(
-            graphRoute = PROFILE_GRAPH_ROUTE,
+            graphRoute = ProfileGraphRoutes.PROFILE_GRAPH,
             label = "Perfil",
-            icon = Icons.Default.Person
+            icon = Icons.Default.Person,
+            requiresAuth = true
         )
     )
+
+    val items: List<TopLevelDestination> = publicItems + privateItems
+
+    fun itemsFor(isLoggedIn: Boolean): List<TopLevelDestination> {
+        return if (isLoggedIn) items else publicItems
+    }
 }

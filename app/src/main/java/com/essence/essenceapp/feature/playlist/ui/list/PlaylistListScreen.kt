@@ -1,10 +1,6 @@
-package com.essence.essenceapp.feature.playlist.ui.list
+﻿package com.essence.essenceapp.feature.playlist.ui.list
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,20 +14,17 @@ import com.essence.essenceapp.feature.playlist.ui.list.componets.PlaylistListTop
 fun PlaylistListScreen(
     viewModel: PlaylistListViewModel = hiltViewModel(),
     onNavigateToDetail: (Long) -> Unit = {},
-    onNavigateToCreate: () -> Unit = {}
+    onNavigateToCreate: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
-            PlaylistListTopBar(title = "Mis Playlists")
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.onAction(PlaylistListAction.CreatePlaylist) }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Crear playlist")
-            }
+            PlaylistListTopBar(
+                title = "Mi Biblioteca",
+                onCreatePlaylist = onNavigateToCreate
+            )
         }
     ) { innerPadding ->
         PlaylistListContent(
@@ -40,7 +33,8 @@ fun PlaylistListScreen(
             onAction = { action ->
                 when (action) {
                     is PlaylistListAction.OpenDetail -> onNavigateToDetail(action.id)
-                    is PlaylistListAction.CreatePlaylist -> onNavigateToCreate()
+                    PlaylistListAction.CreatePlaylist -> onNavigateToCreate()
+                    PlaylistListAction.OpenHistory -> onNavigateToHistory()
                     else -> viewModel.onAction(action)
                 }
             }

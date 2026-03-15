@@ -10,21 +10,34 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.essence.essenceapp.feature.home.ui.components.HomeContent
 import com.essence.essenceapp.feature.home.ui.components.HomeTopBar
 
-
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    isLoggedIn: Boolean = false,
+    onLoginClick: () -> Unit = {},
+    onOpenSong: (Long) -> Unit = {},
+    onOpenAlbum: (Long) -> Unit = {},
+    onOpenArtist: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
-        topBar = { HomeTopBar(title = "Mi App") },
-    ) {
-        innerPadding ->
+        topBar = {
+            HomeTopBar(
+                title = "Mi App",
+                isLoggedIn = isLoggedIn,
+                onLoginClick = onLoginClick
+            )
+        }
+    ) { innerPadding ->
         HomeContent(
             modifier = Modifier.padding(innerPadding),
             state = state,
-            onRefresh = {viewModel.onRefresh()}
+            isLoggedIn = isLoggedIn,
+            onRefresh = { viewModel.onRefresh() },
+            onOpenSong = onOpenSong,
+            onOpenAlbum = onOpenAlbum,
+            onOpenArtist = onOpenArtist
         )
     }
 }

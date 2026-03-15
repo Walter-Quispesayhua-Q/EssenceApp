@@ -40,6 +40,7 @@ fun AlbumDetailScreen(
                 when (action) {
                     AlbumDetailAction.Back -> onBack()
                     AlbumDetailAction.Refresh -> viewModel.onAction(action)
+                    AlbumDetailAction.ToggleLike -> viewModel.onAction(action)
                     is AlbumDetailAction.OpenSong -> onOpenSong(action.songId)
                 }
             }

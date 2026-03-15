@@ -52,4 +52,10 @@ interface PlaylistApiService {
     //lists
     @GET("$BASE/lists/{id}")
     suspend fun getPlaylistsByUser(@Path("id") userId: Long): PlaylistsSimplesResponseApiDTO?
+
+    @POST("$BASE/{id}/like")
+    suspend fun addLikePlaylist(@Path("id") id: Long)
+
+    @DELETE("$BASE/{id}/like")
+    suspend fun deleteLikePlaylist(@Path("id") id: Long)
 }

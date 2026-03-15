@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.essence.essenceapp.core.network.storage.TokenManager
 import com.essence.essenceapp.feature.playlist.domain.usecase.DeletePlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.GetPlaylistsByUserUseCase
+import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ class PlaylistListViewModel @Inject constructor(
             is PlaylistListAction.DeletePlaylist -> deletePlaylist(action.id)
             is PlaylistListAction.CreatePlaylist -> Unit
             is PlaylistListAction.OpenDetail -> Unit
+            PlaylistListAction.OpenHistory -> Unit
         }
     }
 
@@ -39,20 +41,27 @@ class PlaylistListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = PlaylistListUiState.Loading
 
-            val userId = tokenManager.getUserId()
-            if (userId == null) {
+            try {
+                val userId = tokenManager.getUserId()
+                if (userId == null) {
+                    _uiState.value = PlaylistListUiState.Error(
+                        message = "Inicia sesión para ver tus playlists"
+                    )
+                    return@launch
+                }
+
+                val result = getPlaylistsUseCase(userId)
+                result.onSuccess { playlists ->
+                    _uiState.value = PlaylistListUiState.Success(playlist = playlists)
+                }
+                result.onFailure { error ->
+                    _uiState.value = PlaylistListUiState.Error(
+                        message = error.toUserMessage()
+                    )
+                }
+            } catch (e: Exception) {
                 _uiState.value = PlaylistListUiState.Error(
-                    message = "No se pudo identificar al usuario"
-                )
-                return@launch
-            }
-            val result = getPlaylistsUseCase(userId)
-            result.onSuccess { playlists ->
-                _uiState.value = PlaylistListUiState.Success(playlist = playlists)
-            }
-            result.onFailure { error ->
-                _uiState.value = PlaylistListUiState.Error(
-                    message = error.message ?: "Error al cargar playlists"
+                    message = e.toUserMessage()
                 )
             }
         }
@@ -60,12 +69,20 @@ class PlaylistListViewModel @Inject constructor(
 
     private fun deletePlaylist(id: Long) {
         viewModelScope.launch {
-            val result = deletePlaylistUseCase(id)
-            result.onSuccess {
-                loadPlaylists()
-            }
-            result.onFailure {
-                // Opcional: manejar error en uiState
+            try {
+                val result = deletePlaylistUseCase(id)
+                result.onSuccess {
+                    loadPlaylists()
+                }
+                result.onFailure { error ->
+                    _uiState.value = PlaylistListUiState.Error(
+                        message = error.toUserMessage()
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = PlaylistListUiState.Error(
+                    message = e.toUserMessage()
+                )
             }
         }
     }

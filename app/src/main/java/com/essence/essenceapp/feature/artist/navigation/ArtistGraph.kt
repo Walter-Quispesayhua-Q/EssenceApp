@@ -1,4 +1,4 @@
-package com.essence.essenceapp.feature.artist.navigation
+﻿package com.essence.essenceapp.feature.artist.navigation
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavController
@@ -7,8 +7,9 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.essence.essenceapp.feature.album.navigation.AlbumRoutes
 import com.essence.essenceapp.feature.artist.ui.ArtistDetailScreen
-
+import com.essence.essenceapp.feature.song.navigation.SongRoutes
 
 fun NavGraphBuilder.artistGraph(
     navController: NavController
@@ -19,11 +20,11 @@ fun NavGraphBuilder.artistGraph(
     ) {
         composable(
             route = ArtistRoutes.ARTIST_DETAIL,
-            arguments = listOf(navArgument(
-                ArtistRoutes.ARTIST_ID
-            ) {
-                type = NavType.LongType
-            })
+            arguments = listOf(
+                navArgument(ArtistRoutes.ARTIST_ID) {
+                    type = NavType.LongType
+                }
+            )
         ) { backStackEntry ->
             val args = backStackEntry.arguments
             val artistId = args
@@ -37,7 +38,9 @@ fun NavGraphBuilder.artistGraph(
 
             ArtistDetailScreen(
                 artistId = artistId,
-                onBack = {navController.popBackStack()}
+                onBack = { navController.popBackStack() },
+                onOpenSong = { songId -> navController.navigate(SongRoutes.detail(songId)) },
+                onOpenAlbum = { albumId -> navController.navigate(AlbumRoutes.detail(albumId)) }
             )
         }
     }

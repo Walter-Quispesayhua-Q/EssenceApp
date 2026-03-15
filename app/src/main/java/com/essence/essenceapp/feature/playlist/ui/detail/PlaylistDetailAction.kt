@@ -4,4 +4,5 @@ sealed interface PlaylistDetailAction {
     data object EditPlaylist : PlaylistDetailAction
     data object DeletePlaylist : PlaylistDetailAction
     data class RemoveSong(val songId: Long) : PlaylistDetailAction
+    data object ToggleLike : PlaylistDetailAction
 }

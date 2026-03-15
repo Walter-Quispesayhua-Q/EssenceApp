@@ -1,8 +1,11 @@
 package com.essence.essenceapp.feature.home.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -13,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.essence.essenceapp.R
@@ -21,8 +25,16 @@ import com.essence.essenceapp.ui.theme.EssenceAppTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopBar(
-    title: String?
+    title: String?,
+    isLoggedIn: Boolean,
+    onLoginClick: () -> Unit = {}
 ) {
+    val resolvedTitle = when {
+        !isLoggedIn -> "Inicio"
+        !title.isNullOrBlank() -> title.trim()
+        else -> "Home"
+    }
+
     TopAppBar(
         navigationIcon = {
             Image(
@@ -35,8 +47,29 @@ fun HomeTopBar(
             )
         },
         title = {
-            Text(text = title ?: "Home")
-                },
+            Text(
+                text = resolvedTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        actions = {
+            if (!isLoggedIn) {
+                Button(
+                    onClick = onLoginClick,
+                    modifier = Modifier.height(36.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Ingresar",
+                        maxLines = 1
+                    )
+                }
+            }
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             titleContentColor = MaterialTheme.colorScheme.onSurface
         )
@@ -45,9 +78,33 @@ fun HomeTopBar(
 
 @Preview(showBackground = true)
 @Composable
-private fun HomeTopBarPreview() {
+private fun HomeTopBarGuestPreview() {
     EssenceAppTheme {
-        HomeTopBar(title = null)
+        HomeTopBar(
+            title = null,
+            isLoggedIn = false
+        )
     }
+}
 
+@Preview(showBackground = true)
+@Composable
+private fun HomeTopBarLoggedPreview() {
+    EssenceAppTheme {
+        HomeTopBar(
+            title = "Walter",
+            isLoggedIn = true
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HomeTopBarLongNamePreview() {
+    EssenceAppTheme {
+        HomeTopBar(
+            title = "WalterAlexanderDev",
+            isLoggedIn = true
+        )
+    }
 }

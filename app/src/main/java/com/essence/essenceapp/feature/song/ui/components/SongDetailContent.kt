@@ -11,14 +11,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -29,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,6 +46,8 @@ import com.essence.essenceapp.feature.song.ui.SongDetailUiState
 import com.essence.essenceapp.feature.song.ui.manager.PlaybackUiState
 import com.essence.essenceapp.feature.song.ui.manager.SongDetailManagerAction
 import com.essence.essenceapp.shared.ui.components.cards.BaseCard
+import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import java.time.LocalDate
 import kotlin.math.max
@@ -59,9 +66,10 @@ fun SongDetailContent(
     when (state) {
         SongDetailUiState.Loading -> LoadingState(modifier = modifier)
 
-        is SongDetailUiState.Error -> ErrorState(
+        is SongDetailUiState.Error -> AppErrorState(
             modifier = modifier,
             message = state.message,
+            title = "No se pudo cargar la canción",
             onRetry = { onAction(SongDetailAction.Refresh) }
         )
 
@@ -69,6 +77,7 @@ fun SongDetailContent(
             modifier = modifier,
             song = state.song,
             playback = state.playback,
+            isLikeSubmitting = state.isLikeSubmitting,
             onAction = onAction,
             onManagerAction = onManagerAction
         )
@@ -95,57 +104,27 @@ private fun LoadingState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ErrorState(
-    modifier: Modifier = Modifier,
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = HorizontalMargin),
-        contentAlignment = Alignment.Center
-    ) {
-        BaseCard(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "No se pudo cargar la canción",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onRetry
-                ) {
-                    Text("Reintentar")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun SuccessState(
     modifier: Modifier = Modifier,
     song: Song,
     playback: PlaybackUiState,
+    isLikeSubmitting: Boolean,
     onAction: (SongDetailAction) -> Unit,
     onManagerAction: (SongDetailManagerAction) -> Unit
 ) {
+    val bottomClearance = LocalBottomBarClearance.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(bottom = 24.dp),
+            .padding(bottom = bottomClearance + 24.dp),
         verticalArrangement = Arrangement.spacedBy(SectionGap)
     ) {
-        HeroSection(song = song)
+        HeroSection(
+            song = song,
+            isLikeSubmitting = isLikeSubmitting,
+            onToggleLike = { onAction(SongDetailAction.ToggleLike) }
+        )
 
         PlaybackSection(
             playback = playback,
@@ -161,7 +140,11 @@ private fun SuccessState(
 }
 
 @Composable
-private fun HeroSection(song: Song) {
+private fun HeroSection(
+    song: Song,
+    isLikeSubmitting: Boolean,
+    onToggleLike: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -181,6 +164,15 @@ private fun HeroSection(song: Song) {
                         )
                     )
                 )
+        )
+
+        LikeButton(
+            isLiked = song.isLiked,
+            isSubmitting = isLikeSubmitting,
+            onClick = onToggleLike,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
         )
 
         Column(
@@ -209,6 +201,38 @@ private fun HeroSection(song: Song) {
                 MetaPill(text = formatDuration(song.durationMs.toLong()))
                 song.songType?.takeIf { it.isNotBlank() }?.let { MetaPill(text = it) }
                 song.releaseDate?.let { MetaPill(text = it.year.toString()) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LikeButton(
+    isLiked: Boolean,
+    isSubmitting: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(8.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isLiked) "Quitar like" else "Dar like",
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
@@ -359,7 +383,7 @@ private fun RelationsSection(
 
 @Composable
 private fun RelationCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -410,6 +434,7 @@ private val previewSong = Song(
     imageKey = null,
     songType = "single",
     totalPlays = 1_200_000,
+    isLiked = true,
     artists = listOf(
         ArtistSimple(id = 10L, nameArtist = "Bad Bunny", imageKey = null, artistUrl = "artists/bad-bunny")
     ),
@@ -459,7 +484,8 @@ private fun SongDetailContentSuccessPreview() {
                     isPlaying = true,
                     positionMs = 72_000L,
                     durationMs = 210_000L
-                )
+                ),
+                isLikeSubmitting = false
             ),
             onAction = {},
             onManagerAction = {}

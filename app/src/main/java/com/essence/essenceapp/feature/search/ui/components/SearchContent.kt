@@ -1,6 +1,7 @@
 package com.essence.essenceapp.feature.search.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,24 +29,33 @@ import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.album.CompactAlbumContent
 import com.essence.essenceapp.shared.ui.components.cards.artist.CompactArtistContent
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 
 @Composable
 fun SearchContent(
     modifier: Modifier = Modifier,
     state: SearchUiState,
-    onAction: (SearchAction) -> Unit
+    onAction: (SearchAction) -> Unit,
+    onOpenSong: (Long) -> Unit = {},
+    onOpenAlbum: (Long) -> Unit = {},
+    onOpenArtist: (Long) -> Unit = {}
 ) {
     when (state) {
         is SearchUiState.Idle -> SearchIdleContent(modifier = modifier)
+
         is SearchUiState.Editing -> SearchEditingContent(
             modifier = modifier,
             state = state,
             onAction = onAction
         )
+
         is SearchUiState.Success -> SearchSuccessContent(
             modifier = modifier,
-            state = state
+            state = state,
+            onOpenSong = onOpenSong,
+            onOpenAlbum = onOpenAlbum,
+            onOpenArtist = onOpenArtist
         )
     }
 }
@@ -217,18 +227,23 @@ private fun CategorySection(
 @Composable
 private fun SearchSuccessContent(
     modifier: Modifier = Modifier,
-    state: SearchUiState.Success
+    state: SearchUiState.Success,
+    onOpenSong: (Long) -> Unit,
+    onOpenAlbum: (Long) -> Unit,
+    onOpenArtist: (Long) -> Unit
 ) {
     val selectedType = state.form.type.lowercase()
     val songs = state.results.songs.orEmpty()
     val albums = state.results.albums.orEmpty()
     val artists = state.results.artists.orEmpty()
+    val bottomClearance = LocalBottomBarClearance.current
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = bottomClearance + 16.dp)
     ) {
         item {
             BaseCard(
@@ -253,7 +268,11 @@ private fun SearchSuccessContent(
         if (showSongs(selectedType) && songs.isNotEmpty()) {
             item { SectionTitle("Canciones") }
             items(songs.take(10), key = { it.id }) { song ->
-                BaseCard(modifier = Modifier.fillMaxWidth()) {
+                BaseCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenSong(song.id) }
+                ) {
                     CompactSongContent(song = song)
                 }
             }
@@ -262,7 +281,11 @@ private fun SearchSuccessContent(
         if (showAlbums(selectedType) && albums.isNotEmpty()) {
             item { SectionTitle("Álbumes") }
             items(albums.take(10), key = { it.id }) { album ->
-                BaseCard(modifier = Modifier.fillMaxWidth()) {
+                BaseCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenAlbum(album.id) }
+                ) {
                     CompactAlbumContent(album = album)
                 }
             }
@@ -271,7 +294,11 @@ private fun SearchSuccessContent(
         if (showArtists(selectedType) && artists.isNotEmpty()) {
             item { SectionTitle("Artistas") }
             items(artists.take(10), key = { it.id }) { artist ->
-                BaseCard(modifier = Modifier.fillMaxWidth()) {
+                BaseCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenArtist(artist.id) }
+                ) {
                     CompactArtistContent(artist = artist)
                 }
             }
@@ -306,8 +333,10 @@ private fun SectionTitle(title: String) {
 
 private fun showSongs(type: String): Boolean =
     type.isBlank() || type == "song"
+
 private fun showAlbums(type: String): Boolean =
     type.isBlank() || type == "album"
+
 private fun showArtists(type: String): Boolean =
     type.isBlank() || type == "artist"
 

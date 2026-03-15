@@ -12,5 +12,6 @@ data class ArtistResponseApiDTO(
     val country: String?,
 
     val songs: List<SongResponseSimpleApiDTO>?,
-    val albums: List<AlbumResponseSimpleApiDTO>?
+    val albums: List<AlbumResponseSimpleApiDTO>?,
+    val isLiked: Boolean?
 )

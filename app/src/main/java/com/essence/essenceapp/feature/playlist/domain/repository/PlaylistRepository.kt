@@ -23,4 +23,7 @@ interface PlaylistRepository {
 
     //lists
     suspend fun getPlaylistsByUser(userId: Long): PlaylistsSimples?
+
+    suspend fun addLikePlaylist(id: Long)
+    suspend fun deleteLikePlaylist(id: Long)
 }

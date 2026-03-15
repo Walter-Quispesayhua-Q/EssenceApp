@@ -14,5 +14,6 @@ data class Song(
     val totalPlays: Int?,
     val artists: List<ArtistSimple>,
     val album: AlbumSimple?,
-    val releaseDate: LocalDate?
+    val releaseDate: LocalDate?,
+    val isLiked: Boolean
 )

@@ -11,5 +11,6 @@ data class Artist(
     val artistUrl: String,
     val country: String?,
     val songs: List<SongSimple>?,
-    val albums: List<AlbumSimple>?
+    val albums: List<AlbumSimple>?,
+    val isLiked: Boolean
 )

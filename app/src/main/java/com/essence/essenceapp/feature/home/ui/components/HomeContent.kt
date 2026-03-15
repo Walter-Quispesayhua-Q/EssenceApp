@@ -1,17 +1,24 @@
 package com.essence.essenceapp.feature.home.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,21 +31,22 @@ import com.essence.essenceapp.feature.artist.domain.model.ArtistSimple
 import com.essence.essenceapp.feature.home.ui.HomeUiState
 import com.essence.essenceapp.feature.home.ui.preview.SampleData
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
+import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.album.GridAlbumContent
 import com.essence.essenceapp.shared.ui.components.cards.artist.CircleArtistContent
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material3.Icon
 
 @Composable
 fun HomeContent(
     modifier: Modifier = Modifier,
     state: HomeUiState,
-    onRefresh: () -> Unit
+    isLoggedIn: Boolean,
+    onRefresh: () -> Unit,
+    onOpenSong: (Long) -> Unit,
+    onOpenAlbum: (Long) -> Unit,
+    onOpenArtist: (Long) -> Unit
 ) {
     when (state) {
         is HomeUiState.Loading -> {
@@ -50,7 +58,12 @@ fun HomeContent(
                 modifier = modifier,
                 songs = state.homeData.songs,
                 albums = state.homeData.albums,
-                artists = state.homeData.artists
+                artists = state.homeData.artists,
+                recentSongs = state.recentSongs,
+                isLoggedIn = isLoggedIn,
+                onOpenSong = onOpenSong,
+                onOpenAlbum = onOpenAlbum,
+                onOpenArtist = onOpenArtist
             )
         }
 
@@ -98,7 +111,7 @@ private fun ErrorContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Ocurrió un error",
+            text = "Ocurrio un error",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -124,15 +137,50 @@ private fun HomeSuccessContent(
     songs: List<SongSimple>,
     albums: List<AlbumSimple>,
     artists: List<ArtistSimple>,
+    recentSongs: List<SongSimple>,
+    isLoggedIn: Boolean,
+    onOpenSong: (Long) -> Unit,
+    onOpenAlbum: (Long) -> Unit,
+    onOpenArtist: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val bottomClearance = LocalBottomBarClearance.current
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+        contentPadding = PaddingValues(bottom = bottomClearance + 16.dp)
     ) {
+        if (isLoggedIn) {
+            item {
+                HomeSectionTitle(
+                    title = "Escuchadas recientemente",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            if (recentSongs.isEmpty()) {
+                item {
+                    EmptySectionCard(
+                        message = "Aún no tienes canciones recientes.",
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            } else {
+                item {
+                    SongsSection(
+                        songs = recentSongs,
+                        maxItems = 10,
+                        onOpenSong = onOpenSong,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
         item {
             HomeSectionTitle(
-                title = "Canciones Mas Escuchadas",
+                title = "Canciones más escuchadas",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
@@ -140,13 +188,15 @@ private fun HomeSuccessContent(
         item {
             SongsSection(
                 songs = songs,
+                maxItems = 5,
+                onOpenSong = onOpenSong,
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
         item {
             HomeSectionTitle(
-                title = "Álbumes Mas Escuchadas",
+                title = "Álbumes más escuchados",
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
@@ -154,13 +204,14 @@ private fun HomeSuccessContent(
         item {
             AlbumsSection(
                 albums = albums,
+                onOpenAlbum = onOpenAlbum,
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
         item {
             HomeSectionTitle(
-                title = "Artistas Mas Escuchadas",
+                title = "Artistas más escuchados",
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
@@ -168,6 +219,7 @@ private fun HomeSuccessContent(
         item {
             ArtistsSection(
                 artists = artists,
+                onOpenArtist = onOpenArtist,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -188,8 +240,27 @@ private fun HomeSectionTitle(
 }
 
 @Composable
+private fun EmptySectionCard(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    BaseCard(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(14.dp)
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+        )
+    }
+}
+
+@Composable
 private fun SongsSection(
     songs: List<SongSimple>,
+    maxItems: Int,
+    onOpenSong: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -198,8 +269,14 @@ private fun SongsSection(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        songs.take(5).forEach { song ->
-            CompactSongContent(song = song)
+        songs.take(maxItems).forEach { song ->
+            BaseCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenSong(song.id) }
+            ) {
+                CompactSongContent(song = song)
+            }
         }
     }
 }
@@ -207,19 +284,19 @@ private fun SongsSection(
 @Composable
 private fun AlbumsSection(
     albums: List<AlbumSimple>,
+    onOpenAlbum: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
         modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(
-            items = albums,
-            key = { it.id }
-        ) { album ->
-            Box(
-                modifier = Modifier.width(140.dp)
+        items(albums, key = { it.id }) { album ->
+            BaseCard(
+                modifier = Modifier
+                    .width(140.dp)
+                    .clickable { onOpenAlbum(album.id) }
             ) {
                 GridAlbumContent(album = album)
             }
@@ -230,19 +307,19 @@ private fun AlbumsSection(
 @Composable
 private fun ArtistsSection(
     artists: List<ArtistSimple>,
+    onOpenArtist: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
         modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(
-            items = artists,
-            key = { it.id }
-        ) { artist ->
-            Box(
-                modifier = Modifier.width(120.dp)
+        items(artists, key = { it.id }) { artist ->
+            BaseCard(
+                modifier = Modifier
+                    .width(120.dp)
+                    .clickable { onOpenArtist(artist.id) }
             ) {
                 CircleArtistContent(artist = artist)
             }
@@ -256,9 +333,14 @@ private fun HomeContentLoadedPreview() {
     EssenceAppTheme {
         HomeContent(
             state = HomeUiState.Success(
-                homeData = SampleData.home
+                homeData = SampleData.home,
+                recentSongs = SampleData.home.songs.take(3)
             ),
-            onRefresh = {}
+            isLoggedIn = true,
+            onRefresh = {},
+            onOpenSong = {},
+            onOpenAlbum = {},
+            onOpenArtist = {}
         )
     }
 }
@@ -269,7 +351,11 @@ private fun HomeContentLoadingPreview() {
     EssenceAppTheme {
         HomeContent(
             state = HomeUiState.Loading,
-            onRefresh = {}
+            isLoggedIn = false,
+            onRefresh = {},
+            onOpenSong = {},
+            onOpenAlbum = {},
+            onOpenArtist = {}
         )
     }
 }
@@ -280,7 +366,11 @@ private fun HomeContentErrorPreview() {
     EssenceAppTheme {
         HomeContent(
             state = HomeUiState.Error(message = "Error al cargar datos"),
-            onRefresh = {}
+            isLoggedIn = false,
+            onRefresh = {},
+            onOpenSong = {},
+            onOpenAlbum = {},
+            onOpenArtist = {}
         )
     }
 }

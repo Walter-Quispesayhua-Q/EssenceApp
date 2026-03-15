@@ -5,4 +5,5 @@ sealed interface SongDetailAction {
     data object Refresh : SongDetailAction
     data class OpenArtist(val artistId: Long) : SongDetailAction
     data class OpenAlbum(val albumId: Long) : SongDetailAction
+    data object ToggleLike : SongDetailAction
 }

@@ -28,15 +28,22 @@ fun PlaylistDetailScreen(
         topBar = {
             PlaylistDetailTopBar(
                 title = (state as? PlaylistDetailUiState.Success)?.playlist?.title ?: "Playlist",
-                onBack = onBack,
-//                onEdit = { onNavigateToEdit(playlistId) }
+                onBack = onBack
             )
         }
     ) { innerPadding ->
         PlaylistDetailContent(
             modifier = Modifier.padding(innerPadding),
             state = state,
-            onAction = viewModel::onAction
+            onAction = { action ->
+                when (action) {
+                    PlaylistDetailAction.EditPlaylist -> onNavigateToEdit(playlistId)
+                    PlaylistDetailAction.DeletePlaylist -> viewModel.onAction(action)
+                    PlaylistDetailAction.ToggleLike -> viewModel.onAction(action)
+                    is PlaylistDetailAction.RemoveSong -> viewModel.onAction(action)
+                }
+            },
+            onRetry = { viewModel.loadPlaylist(playlistId) }
         )
     }
 }

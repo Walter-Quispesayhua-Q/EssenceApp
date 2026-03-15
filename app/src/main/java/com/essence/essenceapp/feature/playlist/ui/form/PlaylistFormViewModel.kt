@@ -103,4 +103,12 @@ class PlaylistFormViewModel @Inject constructor(
             _uiState.value = transform(current)
         }
     }
+    fun initialize(playlistId: Long?) {
+        if (playlistId == null) {
+            editingId = null
+            _uiState.value = PlaylistFormUiState.Editing()
+        } else {
+            loadForEdit(playlistId)
+        }
+    }
 }

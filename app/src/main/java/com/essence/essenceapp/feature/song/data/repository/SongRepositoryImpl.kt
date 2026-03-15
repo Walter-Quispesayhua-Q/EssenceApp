@@ -13,4 +13,11 @@ class SongRepositoryImpl(
         val apiDTO = apiService.getSong(songId)
         return apiDTO?.songToDomain()
     }
+    override suspend fun addLikeSong(songId: Long) {
+        apiService.addLikeSong(songId)
+    }
+
+    override suspend fun deleteLikeSong(songId: Long) {
+        apiService.deleteLikeSong(songId)
+    }
 }

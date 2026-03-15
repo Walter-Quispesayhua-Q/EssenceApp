@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,6 +51,8 @@ import com.essence.essenceapp.feature.song.domain.model.SongSimple
 import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.album.GridAlbumContent
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
+import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import java.time.LocalDate
 import java.util.Locale
@@ -65,15 +70,17 @@ fun ArtistDetailContent(
     when (state) {
         ArtistDetailUiState.Loading -> ArtistDetailLoadingState(modifier = modifier)
 
-        is ArtistDetailUiState.Error -> ArtistDetailErrorState(
+        is ArtistDetailUiState.Error -> AppErrorState(
             modifier = modifier,
             message = state.message,
+            title = "No se pudo cargar el artista",
             onRetry = { onAction(ArtistDetailAction.Refresh) }
         )
 
         is ArtistDetailUiState.Success -> ArtistDetailSuccessState(
             modifier = modifier,
             artist = state.artist,
+            isLikeSubmitting = state.isLikeSubmitting,
             onAction = onAction
         )
     }
@@ -99,65 +106,30 @@ private fun ArtistDetailLoadingState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ArtistDetailErrorState(
-    modifier: Modifier = Modifier,
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = HorizontalMargin),
-        contentAlignment = Alignment.Center
-    ) {
-        BaseCard(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "No se pudo cargar el artista",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onRetry
-                ) {
-                    Text("Reintentar")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ArtistDetailSuccessState(
     modifier: Modifier = Modifier,
     artist: Artist,
+    isLikeSubmitting: Boolean,
     onAction: (ArtistDetailAction) -> Unit
 ) {
     val songs = artist.songs.orEmpty()
-    val albums = artist.albums
-    val totalPlays = songs.sumOf { (it.totalPlays ?: 0L).toLong() }
+    val albums = artist.albums.orEmpty()
+    val totalPlays = songs.sumOf { it.totalPlays ?: 0L }
+    val bottomClearance = LocalBottomBarClearance.current
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(bottom = bottomClearance + 24.dp),
         verticalArrangement = Arrangement.spacedBy(SectionGap)
     ) {
         item {
-            if (albums != null) {
-                ArtistHeroSection(
-                    artist = artist,
-                    songsCount = songs.size,
-                    albumsCount = albums.size
-                )
-            }
+            ArtistHeroSection(
+                artist = artist,
+                songsCount = songs.size,
+                albumsCount = albums.size,
+                isLikeSubmitting = isLikeSubmitting,
+                onToggleLike = { onAction(ArtistDetailAction.ToggleLike) }
+            )
         }
 
         item {
@@ -187,12 +159,10 @@ private fun ArtistDetailSuccessState(
         }
 
         item {
-            if (albums != null) {
-                AlbumsSection(
-                    albums = albums,
-                    onOpenAlbum = { onAction(ArtistDetailAction.OpenAlbum(it)) }
-                )
-            }
+            AlbumsSection(
+                albums = albums,
+                onOpenAlbum = { onAction(ArtistDetailAction.OpenAlbum(it)) }
+            )
         }
     }
 }
@@ -201,7 +171,9 @@ private fun ArtistDetailSuccessState(
 private fun ArtistHeroSection(
     artist: Artist,
     songsCount: Int,
-    albumsCount: Int
+    albumsCount: Int,
+    isLikeSubmitting: Boolean,
+    onToggleLike: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -236,6 +208,15 @@ private fun ArtistHeroSection(
                         )
                     )
                 )
+        )
+
+        LikeButton(
+            isLiked = artist.isLiked,
+            isSubmitting = isLikeSubmitting,
+            onClick = onToggleLike,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
         )
 
         Column(
@@ -275,6 +256,38 @@ private fun ArtistHeroSection(
                     color = Color.White.copy(alpha = 0.75f),
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LikeButton(
+    isLiked: Boolean,
+    isSubmitting: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(8.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isLiked) "Quitar like" else "Dar like",
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -465,9 +478,7 @@ private fun TracklistSection(
                         .clickable { onOpenSong(song.id) },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         CompactSongContent(
                             song = song,
                             modifier = Modifier.weight(1f),
@@ -623,7 +634,8 @@ private val previewArtist = Artist(
     artistUrl = "artists/bad-bunny",
     country = "Puerto Rico",
     songs = previewSongs,
-    albums = previewAlbums
+    albums = previewAlbums,
+    isLiked = true
 )
 
 @Preview(name = "Artist Detail - Loading", showBackground = true, backgroundColor = 0xFF121212)
@@ -653,7 +665,10 @@ private fun ArtistDetailContentErrorPreview() {
 private fun ArtistDetailContentSuccessPreview() {
     EssenceAppTheme {
         ArtistDetailContent(
-            state = ArtistDetailUiState.Success(previewArtist),
+            state = ArtistDetailUiState.Success(
+                artist = previewArtist,
+                isLikeSubmitting = false
+            ),
             onAction = {}
         )
     }

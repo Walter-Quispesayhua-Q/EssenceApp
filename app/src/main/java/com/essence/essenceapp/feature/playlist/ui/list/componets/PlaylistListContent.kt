@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
@@ -44,6 +43,7 @@ import com.essence.essenceapp.feature.playlist.ui.list.PlaylistListUiState
 import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.playlist.CompactPlaylistContent
 import com.essence.essenceapp.shared.ui.components.cards.playlist.GridPlaylistContent
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 
 private val AccentColor = Color(0xFF00CED1)
@@ -58,7 +58,8 @@ private sealed interface PlaylistSectionState {
 private data class QuickAccessItem(
     val title: String,
     val value: String?,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val action: PlaylistListAction? = null
 )
 
 private val quickAccessItems = listOf(
@@ -70,7 +71,8 @@ private val quickAccessItems = listOf(
     QuickAccessItem(
         title = "Escuchado recientemente",
         value = "Hoy",
-        icon = Icons.Default.History
+        icon = Icons.Default.History,
+        action = PlaylistListAction.OpenHistory
     ),
     QuickAccessItem(
         title = "Descargas",
@@ -86,12 +88,13 @@ fun PlaylistListContent(
     onAction: (PlaylistListAction) -> Unit
 ) {
     val (mySection, publicSection) = mapStateToSections(state)
+    val bottomClearance = LocalBottomBarClearance.current
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 20.dp)
+        contentPadding = PaddingValues(bottom = bottomClearance + 20.dp)
     ) {
-        item { QuickAccessSection(items = quickAccessItems) }
+        item { QuickAccessSection(items = quickAccessItems, onAction = onAction) }
 
         item { SectionDivider() }
 
@@ -157,7 +160,10 @@ private fun mapStateToSections(
     }
 
 @Composable
-private fun QuickAccessSection(items: List<QuickAccessItem>) {
+private fun QuickAccessSection(
+    items: List<QuickAccessItem>,
+    onAction: (PlaylistListAction) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -167,6 +173,7 @@ private fun QuickAccessSection(items: List<QuickAccessItem>) {
         items.forEach { item ->
             BaseCard(
                 modifier = Modifier.fillMaxWidth(),
+                onClick = item.action?.let { action -> { onAction(action) } },
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Row(

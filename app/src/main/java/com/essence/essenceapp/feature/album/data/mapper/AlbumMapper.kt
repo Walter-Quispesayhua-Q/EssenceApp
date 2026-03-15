@@ -15,6 +15,7 @@ fun AlbumResponseApiDTO.albumToDomain(): Album? {
         artists = this.artists?.mapNotNull
         { it.artistToSimpleDomain() } ?: emptyList(),
         songs = this.songs?.mapNotNull
-        { it.songToSimpleDomain() } ?: emptyList()
+        { it.songToSimpleDomain() } ?: emptyList(),
+        isLiked = this.isLiked ?: false
     )
 }

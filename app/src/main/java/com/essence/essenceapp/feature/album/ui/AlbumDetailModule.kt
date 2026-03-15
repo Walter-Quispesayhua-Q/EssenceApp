@@ -3,6 +3,8 @@ package com.essence.essenceapp.feature.album.ui
 import com.essence.essenceapp.feature.album.data.api.AlbumApiService
 import com.essence.essenceapp.feature.album.data.repository.AlbumRepositoryImpl
 import com.essence.essenceapp.feature.album.domain.repository.AlbumRepository
+import com.essence.essenceapp.feature.album.domain.usecase.AddLikeAlbumUseCase
+import com.essence.essenceapp.feature.album.domain.usecase.DeleteLikeAlbumUseCase
 import com.essence.essenceapp.feature.album.domain.usecase.GetAlbumUseCase
 import dagger.Module
 import dagger.Provides
@@ -28,4 +30,12 @@ object AlbumDetailModule {
     @Provides
     fun provideGetAlbumUseCase(repo: AlbumRepository): GetAlbumUseCase =
         GetAlbumUseCase(repo)
+
+    @Provides
+    fun provideAddLikeAlbumUseCase(repo: AlbumRepository): AddLikeAlbumUseCase =
+        AddLikeAlbumUseCase(repo)
+
+    @Provides
+    fun provideDeleteLikeAlbumUseCase(repo: AlbumRepository): DeleteLikeAlbumUseCase =
+        DeleteLikeAlbumUseCase(repo)
 }

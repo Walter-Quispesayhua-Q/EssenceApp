@@ -15,10 +15,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
@@ -46,6 +49,8 @@ import com.essence.essenceapp.feature.album.ui.AlbumDetailUiState
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
 import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
+import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import java.time.LocalDate
 import java.util.Locale
@@ -64,15 +69,17 @@ fun AlbumDetailContent(
     when (state) {
         AlbumDetailUiState.Loading -> LoadingState(modifier = modifier)
 
-        is AlbumDetailUiState.Error -> ErrorState(
+        is AlbumDetailUiState.Error -> AppErrorState(
             modifier = modifier,
             message = state.message,
+            title = "No se pudo cargar el álbum",
             onRetry = { onAction(AlbumDetailAction.Refresh) }
         )
 
         is AlbumDetailUiState.Success -> SuccessState(
             modifier = modifier,
             album = state.album,
+            isLikeSubmitting = state.isLikeSubmitting,
             onAction = onAction
         )
     }
@@ -98,83 +105,57 @@ private fun LoadingState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ErrorState(
-    modifier: Modifier = Modifier,
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = HorizontalMargin),
-        contentAlignment = Alignment.Center
-    ) {
-        BaseCard(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "No se pudo cargar el álbum",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onRetry
-                ) {
-                    Text("Reintentar")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun SuccessState(
     modifier: Modifier = Modifier,
     album: Album,
+    isLikeSubmitting: Boolean,
     onAction: (AlbumDetailAction) -> Unit
 ) {
     val songs = album.songs.orEmpty()
-    val totalPlays = songs.sumOf { it.totalPlays?.toLong() ?: 0L }
+    val totalPlays = songs.sumOf { it.totalPlays ?: 0L }
     val totalDurationMs = songs.sumOf { it.durationMs.toLong() }
+    val bottomClearance = LocalBottomBarClearance.current
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(bottom = 24.dp),
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = bottomClearance + 24.dp),
         verticalArrangement = Arrangement.spacedBy(SectionGap)
     ) {
-        AlbumHeroSection(
-            album = album,
-            songs = songs,
-            totalDurationMs = totalDurationMs
-        )
+        item {
+            AlbumHeroSection(
+                album = album,
+                songs = songs,
+                totalDurationMs = totalDurationMs,
+                isLikeSubmitting = isLikeSubmitting,
+                onToggleLike = { onAction(AlbumDetailAction.ToggleLike) }
+            )
+        }
 
-        StatsSection(
-            totalPlays = totalPlays,
-            songsCount = songs.size
-        )
+        item {
+            StatsSection(
+                totalPlays = totalPlays,
+                songsCount = songs.size
+            )
+        }
 
-        ActionsSection(
-            enabled = songs.isNotEmpty(),
-            onPlay = {
-                songs.firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.id)) }
-            },
-            onShuffle = {
-                songs.shuffled().firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.id)) }
-            }
-        )
+        item {
+            ActionsSection(
+                enabled = songs.isNotEmpty(),
+                onPlay = {
+                    songs.firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.id)) }
+                },
+                onShuffle = {
+                    songs.shuffled().firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.id)) }
+                }
+            )
+        }
 
-        TracklistSection(
-            songs = songs,
-            onOpenSong = { onAction(AlbumDetailAction.OpenSong(it)) }
-        )
+        item {
+            TracklistSection(
+                songs = songs,
+                onOpenSong = { onAction(AlbumDetailAction.OpenSong(it)) }
+            )
+        }
     }
 }
 
@@ -182,7 +163,9 @@ private fun SuccessState(
 private fun AlbumHeroSection(
     album: Album,
     songs: List<SongSimple>,
-    totalDurationMs: Long
+    totalDurationMs: Long,
+    isLikeSubmitting: Boolean,
+    onToggleLike: () -> Unit
 ) {
     val subtitle = when {
         songs.isNotEmpty() -> songs.first().artistName
@@ -223,6 +206,15 @@ private fun AlbumHeroSection(
                         )
                     )
                 )
+        )
+
+        LikeButton(
+            isLiked = album.isLiked,
+            isSubmitting = isLikeSubmitting,
+            onClick = onToggleLike,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
         )
 
         Column(
@@ -269,6 +261,38 @@ private fun AlbumHeroSection(
                     color = Color.White.copy(alpha = 0.74f),
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LikeButton(
+    isLiked: Boolean,
+    isSubmitting: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(8.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isLiked) "Quitar like" else "Dar like",
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -557,7 +581,8 @@ private val previewAlbum = Album(
     imageKey = null,
     releaseDate = LocalDate.of(2022, 5, 6),
     artists = emptyList(),
-    songs = previewSongs
+    songs = previewSongs,
+    isLiked = true
 )
 
 @Preview(name = "Album Detail - Loading", showBackground = true, backgroundColor = 0xFF121212)
@@ -587,7 +612,10 @@ private fun AlbumDetailContentErrorPreview() {
 private fun AlbumDetailContentSuccessPreview() {
     EssenceAppTheme {
         AlbumDetailContent(
-            state = AlbumDetailUiState.Success(previewAlbum),
+            state = AlbumDetailUiState.Success(
+                album = previewAlbum,
+                isLikeSubmitting = false
+            ),
             onAction = {}
         )
     }

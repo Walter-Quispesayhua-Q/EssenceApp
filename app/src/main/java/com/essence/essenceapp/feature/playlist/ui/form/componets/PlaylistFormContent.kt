@@ -1,3 +1,4 @@
+// app/src/main/java/com/essence/essenceapp/feature/playlist/ui/form/componets/PlaylistFormContent.kt
 package com.essence.essenceapp.feature.playlist.ui.form.componets
 
 import androidx.compose.foundation.background
@@ -17,10 +18,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,14 +40,16 @@ fun PlaylistFormContent(
     modifier: Modifier = Modifier,
     state: PlaylistFormUiState,
     isEditing: Boolean,
-    onAction: (PlaylistFormAction) -> Unit
+    onAction: (PlaylistFormAction) -> Unit,
+    onDismiss: () -> Unit
 ) {
     when (state) {
         is PlaylistFormUiState.Editing -> PlaylistFormEditingContent(
             modifier = modifier,
             state = state,
             isEditing = isEditing,
-            onAction = onAction
+            onAction = onAction,
+            onDismiss = onDismiss
         )
 
         PlaylistFormUiState.Success -> PlaylistFormSuccessContent(modifier = modifier)
@@ -56,8 +61,11 @@ private fun PlaylistFormEditingContent(
     modifier: Modifier = Modifier,
     state: PlaylistFormUiState.Editing,
     isEditing: Boolean,
-    onAction: (PlaylistFormAction) -> Unit
+    onAction: (PlaylistFormAction) -> Unit,
+    onDismiss: () -> Unit
 ) {
+    val safeError = state.errorMessage?.ifBlank { "No se pudo guardar la playlist." }
+
     Box(modifier = modifier.fillMaxWidth()) {
         BaseCard(
             modifier = Modifier.fillMaxWidth(),
@@ -69,14 +77,17 @@ private fun PlaylistFormEditingContent(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                PlaylistFormHeader(isEditing = isEditing)
+                PlaylistFormHeader(
+                    isEditing = isEditing,
+                    onDismiss = onDismiss
+                )
 
                 OutlinedTextField(
                     value = state.form.title,
                     onValueChange = {
                         dispatchFieldAction(
                             action = PlaylistFormAction.TitleChanged(it),
-                            hasError = state.errorMessage != null,
+                            hasError = safeError != null,
                             onAction = onAction
                         )
                     },
@@ -91,7 +102,7 @@ private fun PlaylistFormEditingContent(
                     onValueChange = {
                         dispatchFieldAction(
                             action = PlaylistFormAction.DescriptionChanged(it),
-                            hasError = state.errorMessage != null,
+                            hasError = safeError != null,
                             onAction = onAction
                         )
                     },
@@ -108,28 +119,39 @@ private fun PlaylistFormEditingContent(
                     onChange = {
                         dispatchFieldAction(
                             action = PlaylistFormAction.IsPublicChanged(it),
-                            hasError = state.errorMessage != null,
+                            hasError = safeError != null,
                             onAction = onAction
                         )
                     }
                 )
 
-                if (state.errorMessage != null) {
+                if (safeError != null) {
                     Text(
-                        text = state.errorMessage,
+                        text = safeError,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
 
-                Button(
-                    onClick = { onAction(PlaylistFormAction.Submit) },
-                    enabled = state.form.title.isNotBlank() && !state.isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        text = if (isEditing) "Guardar cambios" else "Crear playlist"
-                    )
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        enabled = !state.isSubmitting,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+
+                    Button(
+                        onClick = { onAction(PlaylistFormAction.Submit) },
+                        enabled = state.canSubmit,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (isEditing) "Guardar" else "Crear")
+                    }
                 }
             }
         }
@@ -148,18 +170,34 @@ private fun PlaylistFormEditingContent(
 }
 
 @Composable
-private fun PlaylistFormHeader(isEditing: Boolean) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = if (isEditing) "Editar playlist" else "Nueva playlist",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = "Completa los campos y guarda los cambios.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-        )
+private fun PlaylistFormHeader(
+    isEditing: Boolean,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = if (isEditing) "Editar playlist" else "Nueva playlist",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Completa los campos y guarda los cambios.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+            )
+        }
+
+        TextButton(onClick = onDismiss) {
+            Text("Cerrar")
+        }
     }
 }
 
@@ -245,7 +283,8 @@ private fun PlaylistFormCreatePreview() {
         PlaylistFormContent(
             state = PlaylistFormUiState.Editing(),
             isEditing = false,
-            onAction = {}
+            onAction = {},
+            onDismiss = {}
         )
     }
 }
@@ -264,7 +303,8 @@ private fun PlaylistFormEditSubmittingPreview() {
                 isSubmitting = true
             ),
             isEditing = true,
-            onAction = {}
+            onAction = {},
+            onDismiss = {}
         )
     }
 }

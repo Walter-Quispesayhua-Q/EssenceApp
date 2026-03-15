@@ -12,15 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -46,6 +48,8 @@ import com.essence.essenceapp.feature.playlist.ui.detail.PlaylistDetailUiState
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
 import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
+import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
+import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -70,16 +74,20 @@ fun PlaylistDetailContent(
 ) {
     when (state) {
         PlaylistDetailUiState.Loading -> DetailLoadingState(modifier)
-        is PlaylistDetailUiState.Error -> DetailErrorState(
+
+        is PlaylistDetailUiState.Error -> AppErrorState(
             modifier = modifier,
             message = state.message,
+            title = "No se pudo cargar la playlist",
             onRetry = onRetry
         )
+
         is PlaylistDetailUiState.Success -> DetailSuccessState(
             modifier = modifier,
             playlist = state.playlist,
             songs = state.songs,
             isSongsLoading = state.isSongsLoading,
+            isLikeSubmitting = state.isLikeSubmitting,
             onAction = onAction,
             onShare = onShare
         )
@@ -92,20 +100,29 @@ private fun DetailSuccessState(
     playlist: Playlist,
     songs: List<SongSimple>,
     isSongsLoading: Boolean,
+    isLikeSubmitting: Boolean,
     onAction: (PlaylistDetailAction) -> Unit,
     onShare: () -> Unit
 ) {
+    val bottomClearance = LocalBottomBarClearance.current
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = HorizontalMargin,
             end = HorizontalMargin,
             top = 8.dp,
-            bottom = 24.dp
+            bottom = bottomClearance + 24.dp
         ),
         verticalArrangement = Arrangement.spacedBy(SectionGap)
     ) {
-        item { HeroSection(playlist = playlist) }
+        item {
+            HeroSection(
+                playlist = playlist,
+                isLikeSubmitting = isLikeSubmitting,
+                onToggleLike = { onAction(PlaylistDetailAction.ToggleLike) }
+            )
+        }
 
         item {
             ActionsSection(
@@ -128,7 +145,9 @@ private fun DetailSuccessState(
             isSongsLoading -> {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -165,13 +184,30 @@ private fun DetailSuccessState(
 }
 
 @Composable
-private fun HeroSection(playlist: Playlist) {
+private fun HeroSection(
+    playlist: Playlist,
+    isLikeSubmitting: Boolean,
+    onToggleLike: () -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        CoverArt(imageKey = playlist.imageKey)
+        Box {
+            CoverArt(imageKey = playlist.imageKey)
+
+            if (playlist.isPublic) {
+                LikeButton(
+                    isLiked = playlist.isLiked,
+                    isSubmitting = isLikeSubmitting,
+                    onClick = onToggleLike,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                )
+            }
+        }
 
         Text(
             text = playlist.title,
@@ -205,6 +241,14 @@ private fun HeroSection(playlist: Playlist) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.86f)
             )
+
+            if (playlist.isPublic) {
+                Text(
+                    text = "${playlist.totalLikes ?: 0} likes",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.86f)
+                )
+            }
         }
 
         Text(
@@ -212,6 +256,43 @@ private fun HeroSection(playlist: Playlist) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.68f)
         )
+    }
+}
+
+@Composable
+private fun LikeButton(
+    isLiked: Boolean,
+    isSubmitting: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f),
+                shape = CircleShape
+            )
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(8.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isLiked) "Quitar like" else "Dar like",
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
     }
 }
 
@@ -378,39 +459,6 @@ private fun DetailLoadingState(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun DetailErrorState(
-    modifier: Modifier = Modifier,
-    message: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = modifier.fillMaxSize().padding(horizontal = HorizontalMargin),
-        contentAlignment = Alignment.Center
-    ) {
-        BaseCard(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "No se pudo cargar la playlist",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
-                    Text("Reintentar")
-                }
-            }
-        }
-    }
-}
-
 private fun formatDuration(durationMs: Long): String {
     val totalSeconds = durationMs / 1000
     val minutes = totalSeconds / 60
@@ -423,11 +471,12 @@ private val previewPlaylist = Playlist(
     title = "Noches Lo-Fi",
     description = "Selección para estudiar y concentrarse.",
     imageKey = null,
-    isPublic = false,
+    isPublic = true,
     totalSongs = 3,
     createdAt = LocalDate.of(2025, 11, 20),
     updatedAt = LocalDate.of(2026, 3, 2),
-    totalLikes = 42
+    totalLikes = 42,
+    isLiked = true
 )
 
 private val previewSongs = listOf(
@@ -460,7 +509,8 @@ private fun SuccessWithSongsPreview() {
             state = PlaylistDetailUiState.Success(
                 playlist = previewPlaylist,
                 songs = previewSongs,
-                isSongsLoading = false
+                isSongsLoading = false,
+                isLikeSubmitting = false
             ),
             onAction = {}
         )
@@ -475,7 +525,8 @@ private fun SuccessEmptyPreview() {
             state = PlaylistDetailUiState.Success(
                 playlist = previewPlaylist,
                 songs = emptyList(),
-                isSongsLoading = false
+                isSongsLoading = false,
+                isLikeSubmitting = false
             ),
             onAction = {}
         )

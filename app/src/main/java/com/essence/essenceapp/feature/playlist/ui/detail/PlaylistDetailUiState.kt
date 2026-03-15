@@ -14,6 +14,7 @@ sealed interface PlaylistDetailUiState {
     data class Success(
         val playlist: Playlist,
         val songs: List<SongSimple> = emptyList(),
-        val isSongsLoading: Boolean = true
+        val isSongsLoading: Boolean = true,
+        val isLikeSubmitting: Boolean = false
     ): PlaylistDetailUiState
 }

@@ -6,9 +6,11 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.essence.essenceapp.feature.history.ui.HistoryScreen
 import com.essence.essenceapp.feature.playlist.ui.detail.PlaylistDetailScreen
 import com.essence.essenceapp.feature.playlist.ui.form.PlaylistFormSheet
 import com.essence.essenceapp.feature.playlist.ui.list.PlaylistListScreen
+import com.essence.essenceapp.feature.song.navigation.SongRoutes
 
 fun NavGraphBuilder.playlistGraph(
     navController: NavController
@@ -24,6 +26,18 @@ fun NavGraphBuilder.playlistGraph(
                 },
                 onNavigateToCreate = {
                     navController.navigate(PlaylistRoutes.PLAYLIST_FORM_CREATE)
+                },
+                onNavigateToHistory = {
+                    navController.navigate(PlaylistRoutes.PLAYLIST_HISTORY)
+                }
+            )
+        }
+
+        composable(route = PlaylistRoutes.PLAYLIST_HISTORY) {
+            HistoryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenSong = { songId ->
+                    navController.navigate(SongRoutes.detail(songId))
                 }
             )
         }

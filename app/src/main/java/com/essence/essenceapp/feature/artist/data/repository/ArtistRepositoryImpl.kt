@@ -13,4 +13,12 @@ class ArtistRepositoryImpl(
         val apiDTO = apiService.getArtist(artistId)
         return apiDTO?.artistToDomain()
     }
+
+    override suspend fun addLikeArtist(artistId: Long) {
+        apiService.addLikeArtist(artistId)
+    }
+
+    override suspend fun deleteLikeArtist(artistId: Long) {
+        apiService.deleteLikeArtist(artistId)
+    }
 }

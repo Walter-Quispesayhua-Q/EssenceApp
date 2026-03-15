@@ -5,7 +5,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.essence.essenceapp.feature.search.ui.components.SearchContent
 import com.essence.essenceapp.feature.search.ui.components.SearchTopBar
@@ -13,14 +13,22 @@ import com.essence.essenceapp.feature.search.ui.components.SearchTopBar
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel(),
-    onSearchSuccess: () -> Unit = {}
+    onOpenSong: (Long) -> Unit = {},
+    onOpenAlbum: (Long) -> Unit = {},
+    onOpenArtist: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val query = when (val current = state) {
+        is SearchUiState.Editing -> current.form.query
+        is SearchUiState.Success -> current.form.query
+        is SearchUiState.Idle -> ""
+    }
 
     Scaffold(
         topBar = {
             SearchTopBar(
-                query = (state as? SearchUiState.Editing)?.form?.query ?: "",
+                query = query,
                 onQueryChange = { viewModel.onAction(SearchAction.QueryChanged(it)) },
                 onSearch = { viewModel.onAction(SearchAction.Submit) }
             )
@@ -29,7 +37,10 @@ fun SearchScreen(
         SearchContent(
             modifier = Modifier.padding(innerPadding),
             state = state,
-            onAction = viewModel::onAction
+            onAction = viewModel::onAction,
+            onOpenSong = onOpenSong,
+            onOpenAlbum = onOpenAlbum,
+            onOpenArtist = onOpenArtist
         )
     }
 }

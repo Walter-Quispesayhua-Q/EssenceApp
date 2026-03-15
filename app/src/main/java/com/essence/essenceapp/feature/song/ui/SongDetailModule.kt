@@ -3,6 +3,8 @@ package com.essence.essenceapp.feature.song.ui
 import com.essence.essenceapp.feature.song.data.api.SongApiService
 import com.essence.essenceapp.feature.song.data.repository.SongRepositoryImpl
 import com.essence.essenceapp.feature.song.domain.repository.SongRepository
+import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
+import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
 import dagger.Module
 import dagger.Provides
@@ -28,4 +30,12 @@ object SongDetailModule {
     @Provides
     fun provideGetSongUseCase(repo: SongRepository): GetSongUseCase =
         GetSongUseCase(repo)
+
+    @Provides
+    fun provideAddLikeSongUseCase(repo: SongRepository): AddLikeSongUseCase =
+        AddLikeSongUseCase(repo)
+
+    @Provides
+    fun provideDeleteLikeSongUseCase(repo: SongRepository): DeleteLikeSongUseCase =
+        DeleteLikeSongUseCase(repo)
 }

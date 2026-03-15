@@ -14,5 +14,6 @@ data class SongResponseApiDTO(
     val totalPlays: Int?,
     val artists: List<ArtistResponseSimpleApiDTO>?,
     val album: AlbumResponseSimpleApiDTO?,
-    val releaseDate: LocalDate?
+    val releaseDate: LocalDate?,
+    val isLiked: Boolean?
 )

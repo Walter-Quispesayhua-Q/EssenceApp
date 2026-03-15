@@ -13,4 +13,11 @@ class AlbumRepositoryImpl(
         val apiDTO = apiService.getAlbum(albumId)
         return apiDTO?.albumToDomain()
     }
+    override suspend fun addLikeAlbum(albumId: Long) {
+        apiService.addLikeAlbum(albumId)
+    }
+
+    override suspend fun deleteLikeAlbum(albumId: Long) {
+        apiService.deleteLikeAlbum(albumId)
+    }
 }

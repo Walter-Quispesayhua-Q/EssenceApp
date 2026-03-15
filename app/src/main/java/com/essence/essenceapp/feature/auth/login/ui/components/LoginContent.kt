@@ -62,8 +62,6 @@ fun LoginContent(
             .imePadding()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        LoginTopBar(title = "Iniciar sesión")
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()

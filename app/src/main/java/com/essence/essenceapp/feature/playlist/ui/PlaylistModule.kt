@@ -3,8 +3,10 @@ package com.essence.essenceapp.feature.playlist.ui
 import com.essence.essenceapp.feature.playlist.data.api.PlaylistApiService
 import com.essence.essenceapp.feature.playlist.data.repository.PlaylistRepositoryImpl
 import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistRepository
+import com.essence.essenceapp.feature.playlist.domain.usecase.AddLikePlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.AddSongToPlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.CreatePlaylistUseCase
+import com.essence.essenceapp.feature.playlist.domain.usecase.DeleteLikePlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.DeletePlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.DeleteSongOfPlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.GetForUpdateUseCase
@@ -83,5 +85,15 @@ object PlaylistModule {
     @Provides
     fun provideGetForUpdateUseCase(repo: PlaylistRepository): GetForUpdateUseCase {
         return GetForUpdateUseCase(repo)
+    }
+
+    @Provides
+    fun provideAddLikePlaylistUseCase(repo: PlaylistRepository): AddLikePlaylistUseCase {
+        return AddLikePlaylistUseCase(repo)
+    }
+
+    @Provides
+    fun provideDeleteLikePlaylistUseCase(repo: PlaylistRepository): DeleteLikePlaylistUseCase {
+        return DeleteLikePlaylistUseCase(repo)
     }
 }
