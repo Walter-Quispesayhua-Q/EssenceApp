@@ -13,16 +13,16 @@ import com.essence.essenceapp.feature.artist.ui.components.ArtistDetailTopBar
 
 @Composable
 fun ArtistDetailScreen(
-    artistId: Long,
+    artistLookup: String,
     viewModel: ArtistDetailViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
-    onOpenSong: (Long) -> Unit = {},
-    onOpenAlbum: (Long) -> Unit = {}
+    onOpenSong: (String) -> Unit = {},
+    onOpenAlbum: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(artistId) {
-        viewModel.loadArtist(artistId)
+    LaunchedEffect(artistLookup) {
+        viewModel.loadArtist(artistLookup)
     }
 
     Scaffold(
@@ -41,8 +41,8 @@ fun ArtistDetailScreen(
                     ArtistDetailAction.Back -> onBack()
                     ArtistDetailAction.Refresh -> viewModel.onAction(action)
                     ArtistDetailAction.ToggleLike -> viewModel.onAction(action)
-                    is ArtistDetailAction.OpenSong -> onOpenSong(action.songId)
-                    is ArtistDetailAction.OpenAlbum -> onOpenAlbum(action.albumId)
+                    is ArtistDetailAction.OpenSong -> onOpenSong(action.songLookup)
+                    is ArtistDetailAction.OpenAlbum -> onOpenAlbum(action.albumLookup)
                 }
             }
         )

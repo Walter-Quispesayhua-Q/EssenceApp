@@ -13,21 +13,21 @@ import com.essence.essenceapp.feature.album.ui.components.AlbumDetailTopBar
 
 @Composable
 fun AlbumDetailScreen(
-    albumId: Long,
+    albumLookup: String,
     viewModel: AlbumDetailViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
-    onOpenSong: (Long) -> Unit = {}
+    onOpenSong: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(albumId) {
-        viewModel.loadAlbum(albumId)
+    LaunchedEffect(albumLookup) {
+        viewModel.loadAlbum(albumLookup)
     }
 
     Scaffold(
         topBar = {
             AlbumDetailTopBar(
-                title = (state as? AlbumDetailUiState.Success)?.album?.title ?: "Álbum",
+                title = (state as? AlbumDetailUiState.Success)?.album?.title ?: "Album",
                 onBack = onBack,
                 onRefresh = { viewModel.onAction(AlbumDetailAction.Refresh) }
             )
@@ -41,7 +41,7 @@ fun AlbumDetailScreen(
                     AlbumDetailAction.Back -> onBack()
                     AlbumDetailAction.Refresh -> viewModel.onAction(action)
                     AlbumDetailAction.ToggleLike -> viewModel.onAction(action)
-                    is AlbumDetailAction.OpenSong -> onOpenSong(action.songId)
+                    is AlbumDetailAction.OpenSong -> onOpenSong(action.songLookup)
                 }
             }
         )

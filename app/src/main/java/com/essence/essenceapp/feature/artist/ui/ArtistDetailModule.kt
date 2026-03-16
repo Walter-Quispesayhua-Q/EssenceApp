@@ -3,8 +3,9 @@ package com.essence.essenceapp.feature.artist.ui
 import com.essence.essenceapp.feature.artist.data.api.ArtistApiService
 import com.essence.essenceapp.feature.artist.data.repository.ArtistRepositoryImpl
 import com.essence.essenceapp.feature.artist.domain.repository.ArtistRepository
+import com.essence.essenceapp.feature.artist.domain.usecase.AddLikeArtistUseCase
+import com.essence.essenceapp.feature.artist.domain.usecase.DeleteLikeArtistUseCase
 import com.essence.essenceapp.feature.artist.domain.usecase.GetArtistUseCase
-
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,18 +19,23 @@ object ArtistDetailModule {
 
     @Provides
     @Singleton
-    fun providePlaylistApiService(retrofit: Retrofit): ArtistApiService {
-        return retrofit.create(ArtistApiService::class.java)
-    }
+    fun provideArtistApiService(retrofit: Retrofit): ArtistApiService =
+        retrofit.create(ArtistApiService::class.java)
 
     @Provides
     @Singleton
-    fun providePlaylistRepository(apiService: ArtistApiService): ArtistRepository {
-        return ArtistRepositoryImpl(apiService)
-    }
+    fun provideArtistRepository(apiService: ArtistApiService): ArtistRepository =
+        ArtistRepositoryImpl(apiService)
 
     @Provides
-    fun provideGetPlaylistsByUserUseCase(repo: ArtistRepository): GetArtistUseCase {
-        return GetArtistUseCase(repo)
-    }
+    fun provideGetArtistUseCase(repo: ArtistRepository): GetArtistUseCase =
+        GetArtistUseCase(repo)
+
+    @Provides
+    fun provideAddLikeArtistUseCase(repo: ArtistRepository): AddLikeArtistUseCase =
+        AddLikeArtistUseCase(repo)
+
+    @Provides
+    fun provideDeleteLikeArtistUseCase(repo: ArtistRepository): DeleteLikeArtistUseCase =
+        DeleteLikeArtistUseCase(repo)
 }

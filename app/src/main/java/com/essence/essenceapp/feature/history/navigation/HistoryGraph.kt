@@ -28,8 +28,8 @@ fun NavGraphBuilder.historyGraph(
 
             HistoryScreen(
                 onBack = { navController.popBackStack() },
-                onOpenSong = { songId ->
-                    navController.navigate(SongRoutes.detail(songId))
+                onOpenSong = { songLookup ->
+                    navController.navigate(SongRoutes.detail(songLookup))
                 }
             )
         }

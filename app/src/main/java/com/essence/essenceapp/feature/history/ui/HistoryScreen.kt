@@ -14,7 +14,7 @@ import com.essence.essenceapp.feature.history.ui.components.HistoryTopBar
 fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
     onBack: (() -> Unit)? = null,
-    onOpenSong: (Long) -> Unit = {}
+    onOpenSong: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 

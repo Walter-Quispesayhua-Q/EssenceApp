@@ -1,7 +1,9 @@
 package com.essence.essenceapp.feature.song.data.dto
 
+import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
+@Serializable
 data class SongResponseSimpleApiDTO(
     val id: Long?,
     val title: String?,

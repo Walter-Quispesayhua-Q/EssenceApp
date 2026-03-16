@@ -20,18 +20,18 @@ fun NavGraphBuilder.searchGraph(
     ) {
         composable(route = SearchRoutes.SEARCH) {
             SearchScreen(
-                onOpenSong = { songId ->
+                onOpenSong = { songLookup ->
                     if (isLoggedIn) {
-                        navController.navigate(SongRoutes.detail(songId))
+                        navController.navigate(SongRoutes.detail(songLookup))
                     } else {
                         onRequireAuth()
                     }
                 },
-                onOpenAlbum = { albumId ->
-                    navController.navigate(AlbumRoutes.detail(albumId))
+                onOpenAlbum = { albumLookup ->
+                    navController.navigate(AlbumRoutes.detail(albumLookup))
                 },
-                onOpenArtist = { artistId ->
-                    navController.navigate(ArtistRoutes.detail(artistId))
+                onOpenArtist = { artistLookup ->
+                    navController.navigate(ArtistRoutes.detail(artistLookup))
                 }
             )
         }

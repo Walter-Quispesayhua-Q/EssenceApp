@@ -7,18 +7,20 @@ import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistReposit
 class UpdatePlaylistUseCase(
     private val playlistRepository: PlaylistRepository
 ) {
-    suspend operator fun invoke(id: Long, playlistRequest: PlaylistRequest): Result<PlaylistSimple>{
+    suspend operator fun invoke(id: Long, playlistRequest: PlaylistRequest): Result<PlaylistSimple> {
         if (!playlistRequest.hasChanges) {
             return Result.failure(Exception("No actualizaste ningún campo"))
         }
 
-        val response = playlistRepository.updatePlaylist(id, playlistRequest)
-        return if (response != null) {
-            Result.success(response)
-        } else {
-            Result.failure(Exception(
-                "Error al actualizar playlist"
-            ))
+        return try {
+            val response = playlistRepository.updatePlaylist(id, playlistRequest)
+            if (response != null) {
+                Result.success(response)
+            } else {
+                Result.failure(Exception("Error al actualizar playlist"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

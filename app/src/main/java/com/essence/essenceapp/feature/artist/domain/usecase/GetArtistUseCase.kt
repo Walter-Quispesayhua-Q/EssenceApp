@@ -6,8 +6,8 @@ import com.essence.essenceapp.feature.artist.domain.repository.ArtistRepository
 class GetArtistUseCase(
     private val artistRepository: ArtistRepository
 ) {
-    suspend operator fun invoke(artistId: Long): Result<Artist> {
-        val response = artistRepository.getArtist(artistId)
+    suspend operator fun invoke(artistLookup: String): Result<Artist> {
+        val response = artistRepository.getArtist(artistLookup)
         return if (response != null) {
             Result.success(response)
         } else {

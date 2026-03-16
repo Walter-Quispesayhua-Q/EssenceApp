@@ -3,7 +3,7 @@ package com.essence.essenceapp.feature.song.domain.model
 import java.time.LocalDate
 
 data class SongSimple(
-    val id: Long,
+    val id: Long?,
     val title: String,
     val durationMs: Int,
     val hlsMasterKey: String,
@@ -13,4 +13,7 @@ data class SongSimple(
     val artistName: String,
     val albumName: String?,
     val releaseDate: LocalDate?
-)
+) {
+    val detailLookup: String
+        get() = hlsMasterKey
+}

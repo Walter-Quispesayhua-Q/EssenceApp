@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.essence.essenceapp.feature.auth.navigation.AuthGraphRoutes
 import com.essence.essenceapp.feature.auth.navigation.authGraph
+import com.essence.essenceapp.feature.song.ui.manager.PlaybackManager
 import com.essence.essenceapp.ui.shell.MainShellScreen
 
 object RootRoutes {
@@ -15,7 +16,8 @@ object RootRoutes {
 
 @Composable
 fun AppNavHost(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    playbackManager: PlaybackManager
 ) {
     val navController = rememberNavController()
 
@@ -35,6 +37,7 @@ fun AppNavHost(
     ) {
         composable(route = RootRoutes.MAIN_SHELL) {
             MainShellScreen(
+                playbackManager = playbackManager,
                 onRequireAuth = {
                     navController.navigate(AuthGraphRoutes.AUTH_GRAPH) {
                         launchSingleTop = true

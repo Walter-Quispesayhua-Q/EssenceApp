@@ -5,7 +5,7 @@ import com.essence.essenceapp.feature.album.domain.model.AlbumSimple
 
 fun AlbumResponseSimpleApiDTO.albumToSimpleDomain(): AlbumSimple? {
     return AlbumSimple(
-        id = this.id ?: return null,
+        id = this.id,
         title = this.title ?: return null,
         imageKey = this.imageKey,
         albumUrl = this.albumUrl ?: return null,

@@ -39,7 +39,7 @@ class LoginViewModel @Inject constructor(
             _uiState.value = LoginUiState.Loading
             val result = loginUseCase(Login(email, password))
             result.onSuccess { token ->
-                tokenManager.saveToken(token.token)
+                tokenManager.saveTokenAndUserId(token.token)
                 _uiState.value = LoginUiState.Success
             }
             result.onFailure { error ->

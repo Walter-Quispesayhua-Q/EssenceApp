@@ -2,7 +2,6 @@ package com.essence.essenceapp.feature.playlist.ui.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.essence.essenceapp.core.network.storage.TokenManager
 import com.essence.essenceapp.feature.playlist.domain.usecase.DeletePlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.GetPlaylistsByUserUseCase
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
@@ -16,8 +15,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class PlaylistListViewModel @Inject constructor(
     private val getPlaylistsUseCase: GetPlaylistsByUserUseCase,
-    private val deletePlaylistUseCase: DeletePlaylistUseCase,
-    private val tokenManager: TokenManager
+    private val deletePlaylistUseCase: DeletePlaylistUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlaylistListUiState>(PlaylistListUiState.Loading)
@@ -42,15 +40,7 @@ class PlaylistListViewModel @Inject constructor(
             _uiState.value = PlaylistListUiState.Loading
 
             try {
-                val userId = tokenManager.getUserId()
-                if (userId == null) {
-                    _uiState.value = PlaylistListUiState.Error(
-                        message = "Inicia sesión para ver tus playlists"
-                    )
-                    return@launch
-                }
-
-                val result = getPlaylistsUseCase(userId)
+                val result = getPlaylistsUseCase()
                 result.onSuccess { playlists ->
                     _uiState.value = PlaylistListUiState.Success(playlist = playlists)
                 }

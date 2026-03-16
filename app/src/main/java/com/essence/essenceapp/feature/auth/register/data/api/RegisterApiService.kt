@@ -14,8 +14,12 @@ interface RegisterApiService {
     }
 
     @GET(BASE)
-    suspend fun getAvailableUsername(@Query("query") query: String): Boolean
+    suspend fun getAvailableUsername(
+        @Query("username") username: String
+    ): ApiResponseDto<Boolean>?
 
     @POST(BASE)
-    suspend fun createUser(@Body registerRequestApiDTO: RegisterRequestApiDTO): ApiResponseDto<RegisterApiDTO>?
+    suspend fun createUser(
+        @Body registerRequestApiDTO: RegisterRequestApiDTO
+    ): ApiResponseDto<RegisterApiDTO>?
 }

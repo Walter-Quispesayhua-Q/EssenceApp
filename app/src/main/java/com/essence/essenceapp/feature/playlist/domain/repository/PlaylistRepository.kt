@@ -22,7 +22,7 @@ interface PlaylistRepository {
     suspend fun deleteSongOfPlaylist(id: Long, songId: Long)
 
     //lists
-    suspend fun getPlaylistsByUser(userId: Long): PlaylistsSimples?
+    suspend fun getPlaylistsByUser(): PlaylistsSimples?
 
     suspend fun addLikePlaylist(id: Long)
     suspend fun deleteLikePlaylist(id: Long)

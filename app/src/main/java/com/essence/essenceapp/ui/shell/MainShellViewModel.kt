@@ -1,5 +1,6 @@
 package com.essence.essenceapp.ui.shell
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.essence.essenceapp.core.network.storage.TokenManager
@@ -8,6 +9,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -24,8 +26,15 @@ class MainShellViewModel @Inject constructor(
 
     fun refreshAuthState() {
         viewModelScope.launch {
-            _isLoggedIn.value = runCatching { tokenManager.getUserId() != null }
-                .getOrDefault(false)
+            val token = tokenManager.token.first()
+            val userId = runCatching { tokenManager.getUserId() }.getOrNull()
+
+            Log.e(
+                "AUTH_DEBUG",
+                "refreshAuthState tokenPresent=${!token.isNullOrBlank()} userId=$userId"
+            )
+
+            _isLoggedIn.value = !token.isNullOrBlank()
         }
     }
 }

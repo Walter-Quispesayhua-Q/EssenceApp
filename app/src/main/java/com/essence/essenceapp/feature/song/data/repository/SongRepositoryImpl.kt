@@ -7,12 +7,13 @@ import com.essence.essenceapp.feature.song.domain.repository.SongRepository
 
 class SongRepositoryImpl(
     private val apiService: SongApiService
-): SongRepository {
+) : SongRepository {
 
-    override suspend fun getSong(songId: Long): Song? {
-        val apiDTO = apiService.getSong(songId)
+    override suspend fun getSong(songLookup: String): Song? {
+        val apiDTO = apiService.getSong(songLookup)
         return apiDTO?.songToDomain()
     }
+
     override suspend fun addLikeSong(songId: Long) {
         apiService.addLikeSong(songId)
     }

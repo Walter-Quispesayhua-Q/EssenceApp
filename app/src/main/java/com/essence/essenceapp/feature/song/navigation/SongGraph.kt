@@ -18,17 +18,17 @@ fun NavGraphBuilder.songGraph(
     composable(
         route = SongRoutes.SONG_DETAIL,
         arguments = listOf(
-            navArgument(SongRoutes.SONG_ID) { type = NavType.LongType }
+            navArgument(SongRoutes.SONG_LOOKUP) { type = NavType.StringType }
         )
     ) { backStackEntry ->
-        val songId = backStackEntry.arguments?.getLong(SongRoutes.SONG_ID)
-        if (songId == null) {
+        val songLookup = backStackEntry.arguments?.getString(SongRoutes.SONG_LOOKUP)
+        if (songLookup.isNullOrBlank()) {
             LaunchedEffect(Unit) { navController.popBackStack() }
             return@composable
         }
 
         if (!isLoggedIn) {
-            LaunchedEffect(songId) {
+            LaunchedEffect(songLookup) {
                 navController.popBackStack()
                 onRequireAuth()
             }
@@ -36,13 +36,13 @@ fun NavGraphBuilder.songGraph(
         }
 
         SongDetailScreen(
-            songId = songId,
+            songLookup = songLookup,
             onBack = { navController.popBackStack() },
-            onOpenArtist = { artistId ->
-                navController.navigate(ArtistRoutes.detail(artistId))
+            onOpenArtist = { artistLookup ->
+                navController.navigate(ArtistRoutes.detail(artistLookup))
             },
-            onOpenAlbum = { albumId ->
-                navController.navigate(AlbumRoutes.detail(albumId))
+            onOpenAlbum = { albumLookup ->
+                navController.navigate(AlbumRoutes.detail(albumLookup))
             }
         )
     }

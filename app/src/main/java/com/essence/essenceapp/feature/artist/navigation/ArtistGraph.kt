@@ -21,26 +21,27 @@ fun NavGraphBuilder.artistGraph(
         composable(
             route = ArtistRoutes.ARTIST_DETAIL,
             arguments = listOf(
-                navArgument(ArtistRoutes.ARTIST_ID) {
-                    type = NavType.LongType
+                navArgument(ArtistRoutes.ARTIST_LOOKUP) {
+                    type = NavType.StringType
                 }
             )
         ) { backStackEntry ->
-            val args = backStackEntry.arguments
-            val artistId = args
-                ?.takeIf { it.containsKey(ArtistRoutes.ARTIST_ID) }
-                ?.getLong(ArtistRoutes.ARTIST_ID)
+            val artistLookup = backStackEntry.arguments?.getString(ArtistRoutes.ARTIST_LOOKUP)
 
-            if (artistId == null) {
+            if (artistLookup.isNullOrBlank()) {
                 LaunchedEffect(Unit) { navController.popBackStack() }
                 return@composable
             }
 
             ArtistDetailScreen(
-                artistId = artistId,
+                artistLookup = artistLookup,
                 onBack = { navController.popBackStack() },
-                onOpenSong = { songId -> navController.navigate(SongRoutes.detail(songId)) },
-                onOpenAlbum = { albumId -> navController.navigate(AlbumRoutes.detail(albumId)) }
+                onOpenSong = { songLookup ->
+                    navController.navigate(SongRoutes.detail(songLookup))
+                },
+                onOpenAlbum = { albumLookup ->
+                    navController.navigate(AlbumRoutes.detail(albumLookup))
+                }
             )
         }
     }

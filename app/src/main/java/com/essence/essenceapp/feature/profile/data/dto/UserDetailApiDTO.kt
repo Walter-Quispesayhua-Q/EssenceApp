@@ -1,7 +1,9 @@
 package com.essence.essenceapp.feature.profile.data.dto
 
+import kotlinx.serialization.Serializable
 import java.time.Instant
 
+@Serializable
 data class UserDetailApiDTO(
     val id: Long?,
     val username: String?,

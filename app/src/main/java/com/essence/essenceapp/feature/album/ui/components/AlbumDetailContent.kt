@@ -1,7 +1,7 @@
 package com.essence.essenceapp.feature.album.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,21 +16,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,27 +40,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.essence.essenceapp.feature.album.domain.model.Album
 import com.essence.essenceapp.feature.album.ui.AlbumDetailAction
 import com.essence.essenceapp.feature.album.ui.AlbumDetailUiState
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
-import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
 import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
 import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
+import com.essence.essenceapp.ui.theme.MutedTeal
+import com.essence.essenceapp.ui.theme.SoftRose
 import java.time.LocalDate
 import java.util.Locale
-
-private val AccentColor = Color(0xFF00CED1)
-private val HorizontalMargin = 20.dp
-private val SectionGap = 32.dp
-private val RowGap = 16.dp
 
 @Composable
 fun AlbumDetailContent(
@@ -68,14 +67,12 @@ fun AlbumDetailContent(
 ) {
     when (state) {
         AlbumDetailUiState.Loading -> LoadingState(modifier = modifier)
-
         is AlbumDetailUiState.Error -> AppErrorState(
             modifier = modifier,
             message = state.message,
-            title = "No se pudo cargar el álbum",
+            title = "No se pudo cargar el album",
             onRetry = { onAction(AlbumDetailAction.Refresh) }
         )
-
         is AlbumDetailUiState.Success -> SuccessState(
             modifier = modifier,
             album = state.album,
@@ -93,12 +90,17 @@ private fun LoadingState(modifier: Modifier = Modifier) {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.5.dp,
+                color = SoftRose
+            )
             Text(
-                text = "Cargando álbum...",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                text = "Cargando album...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
     }
@@ -118,8 +120,7 @@ private fun SuccessState(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = bottomClearance + 24.dp),
-        verticalArrangement = Arrangement.spacedBy(SectionGap)
+        contentPadding = PaddingValues(bottom = bottomClearance + 24.dp)
     ) {
         item {
             AlbumHeroSection(
@@ -132,29 +133,51 @@ private fun SuccessState(
         }
 
         item {
-            StatsSection(
+            Spacer(modifier = Modifier.height(16.dp))
+            StatsIsland(
                 totalPlays = totalPlays,
-                songsCount = songs.size
+                songsCount = songs.size,
+                totalDurationMs = totalDurationMs,
+                releaseYear = album.releaseDate?.year,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
 
         item {
-            ActionsSection(
+            Spacer(modifier = Modifier.height(16.dp))
+            ActionsRow(
                 enabled = songs.isNotEmpty(),
                 onPlay = {
-                    songs.firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.id)) }
+                    songs.firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.detailLookup)) }
                 },
                 onShuffle = {
-                    songs.shuffled().firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.id)) }
-                }
+                    songs.shuffled().firstOrNull()?.let { onAction(AlbumDetailAction.OpenSong(it.detailLookup)) }
+                },
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
 
         item {
-            TracklistSection(
-                songs = songs,
-                onOpenSong = { onAction(AlbumDetailAction.OpenSong(it)) }
+            Spacer(modifier = Modifier.height(24.dp))
+            TracksHeader(
+                count = songs.size,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (songs.isEmpty()) {
+            item {
+                TracksEmptyContent(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+        } else {
+            item {
+                TracksIsland(
+                    songs = songs,
+                    onOpenSong = { onAction(AlbumDetailAction.OpenSong(it)) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
         }
     }
 }
@@ -167,18 +190,16 @@ private fun AlbumHeroSection(
     isLikeSubmitting: Boolean,
     onToggleLike: () -> Unit
 ) {
-    val subtitle = when {
+    val artistText = when {
         songs.isNotEmpty() -> songs.first().artistName
-        album.artists.isNotEmpty() -> "${album.artists.size} artistas"
-        else -> "Álbum oficial"
+        album.artists.isNotEmpty() -> album.artists.joinToString(", ") { it.nameArtist }
+        else -> "Album oficial"
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(430.dp)
-            .padding(horizontal = HorizontalMargin)
-            .clip(RoundedCornerShape(24.dp))
+            .height(380.dp)
     ) {
         Box(
             modifier = Modifier
@@ -186,9 +207,9 @@ private fun AlbumHeroSection(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.40f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.58f)
+                            SoftRose.copy(alpha = 0.25f),
+                            MutedTeal.copy(alpha = 0.15f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.6f)
                         )
                     )
                 )
@@ -219,50 +240,330 @@ private fun AlbumHeroSection(
 
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 20.dp),
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 20.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AlbumCoverPlaceholder()
-
             VerifiedBadge()
 
             Text(
                 text = album.title,
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold
-                ),
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
             )
 
             Text(
-                text = subtitle,
+                text = artistText,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.70f)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f)
             )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                MetaPill(text = "${songs.size} tracks")
-                MetaPill(text = formatTotalDuration(totalDurationMs))
-                album.releaseDate?.let { MetaPill(text = it.year.toString()) }
-            }
 
             album.description?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.74f),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun StatsIsland(
+    totalPlays: Long,
+    songsCount: Int,
+    totalDurationMs: Long,
+    releaseYear: Int?,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatCell(
+                icon = Icons.Outlined.MusicNote,
+                value = "$songsCount",
+                label = "Tracks",
+                tint = SoftRose
+            )
+
+            CellDivider()
+
+            StatCell(
+                icon = Icons.Default.PlayArrow,
+                value = formatPlays(totalPlays),
+                label = "Plays",
+                tint = MutedTeal
+            )
+
+            CellDivider()
+
+            StatCell(
+                icon = Icons.Default.Shuffle,
+                value = formatTotalDuration(totalDurationMs),
+                label = "Duración",
+                tint = SoftRose
+            )
+
+            if (releaseYear != null) {
+                CellDivider()
+
+                StatCell(
+                    icon = Icons.Default.CheckCircle,
+                    value = "$releaseYear",
+                    label = "Año",
+                    tint = MutedTeal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatCell(
+    icon: ImageVector,
+    value: String,
+    label: String,
+    tint: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+        )
+    }
+}
+
+@Composable
+private fun CellDivider() {
+    Box(
+        modifier = Modifier
+            .width(0.5.dp)
+            .height(36.dp)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+    )
+}
+
+@Composable
+private fun ActionsRow(
+    enabled: Boolean,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OutlinedButton(
+            onClick = onPlay,
+            enabled = enabled,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(50),
+            border = BorderStroke(
+                1.dp,
+                if (enabled) SoftRose.copy(alpha = 0.5f)
+                else SoftRose.copy(alpha = 0.2f)
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = SoftRose,
+                disabledContentColor = SoftRose.copy(alpha = 0.3f)
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Reproducir",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        OutlinedButton(
+            onClick = onShuffle,
+            enabled = enabled,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(50),
+            border = BorderStroke(
+                1.dp,
+                if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Shuffle,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Aleatorio",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun TracksHeader(
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(18.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(SoftRose, SoftRose.copy(alpha = 0.3f))
+                    ),
+                    shape = RoundedCornerShape(2.dp)
+                )
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = "Tracks",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+        )
+    }
+}
+
+@Composable
+private fun TracksIsland(
+    songs: List<SongSimple>,
+    onOpenSong: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            songs.forEachIndexed { index, song ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenSong(song.detailLookup) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "${index + 1}".padStart(2, '0'),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (index == 0) SoftRose
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                        modifier = Modifier.width(24.dp)
+                    )
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        CompactSongContent(
+                            song = song,
+                            durationText = formatDuration(song.durationMs)
+                        )
+                    }
+                }
+
+                if (index < songs.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 50.dp, end = 14.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TracksEmptyContent(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Text(
+                text = "Sin canciones disponibles",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -274,252 +575,61 @@ private fun LikeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .clip(androidx.compose.foundation.shape.CircleShape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        border = BorderStroke(
+            1.dp,
+            if (isLiked) SoftRose.copy(alpha = 0.25f)
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+        )
     ) {
-        IconButton(
-            onClick = onClick,
-            enabled = !isSubmitting
-        ) {
+        IconButton(onClick = onClick, enabled = !isSubmitting) {
             if (isSubmitting) {
                 CircularProgressIndicator(
-                    modifier = Modifier.padding(8.dp),
-                    strokeWidth = 2.dp
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = SoftRose
                 )
             } else {
                 Icon(
-                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    imageVector = if (isLiked) Icons.Default.Favorite
+                    else Icons.Default.FavoriteBorder,
                     contentDescription = if (isLiked) "Quitar like" else "Dar like",
-                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    tint = if (isLiked) SoftRose
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun AlbumCoverPlaceholder() {
-    Box(
-        modifier = Modifier
-            .size(240.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(
-                width = 1.dp,
-                color = AccentColor.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(24.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.Album,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(88.dp)
-        )
     }
 }
 
 @Composable
 private fun VerifiedBadge() {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(AccentColor.copy(alpha = 0.15f))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MutedTeal.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, MutedTeal.copy(alpha = 0.15f))
     ) {
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = null,
-            tint = AccentColor,
-            modifier = Modifier.size(14.dp)
-        )
-        Text(
-            text = "Álbum oficial",
-            style = MaterialTheme.typography.labelMedium,
-            color = AccentColor
-        )
-    }
-}
-
-@Composable
-private fun MetaPill(text: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun StatsSection(
-    totalPlays: Long,
-    songsCount: Int
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HorizontalMargin),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        StatCard(
-            modifier = Modifier.weight(1f),
-            label = "PLAYS",
-            value = formatPlays(totalPlays)
-        )
-        StatCard(
-            modifier = Modifier.weight(1f),
-            label = "META",
-            value = "$songsCount Songs"
-        )
-    }
-}
-
-@Composable
-private fun StatCard(
-    modifier: Modifier = Modifier,
-    label: String,
-    value: String
-) {
-    BaseCard(
-        modifier = modifier,
-        contentPadding = PaddingValues(14.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MutedTeal,
+                modifier = Modifier.size(14.dp)
             )
             Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                text = "Album oficial",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = MutedTeal
             )
-        }
-    }
-}
-
-@Composable
-private fun ActionsSection(
-    enabled: Boolean,
-    onPlay: () -> Unit,
-    onShuffle: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HorizontalMargin),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Button(
-            modifier = Modifier.weight(1f),
-            enabled = enabled,
-            onClick = onPlay,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = AccentColor,
-                contentColor = Color(0xFF121212)
-            )
-        ) {
-            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("PLAY")
-        }
-
-        OutlinedButton(
-            modifier = Modifier.weight(1f),
-            enabled = enabled,
-            onClick = onShuffle
-        ) {
-            Icon(imageVector = Icons.Default.Shuffle, contentDescription = null)
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("SHUFFLE")
-        }
-    }
-}
-
-@Composable
-private fun TracklistSection(
-    songs: List<SongSimple>,
-    onOpenSong: (Long) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HorizontalMargin),
-        verticalArrangement = Arrangement.spacedBy(RowGap)
-    ) {
-        Text(
-            text = "Tracks",
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        if (songs.isEmpty()) {
-            BaseCard(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(14.dp)
-            ) {
-                Text(
-                    text = "No hay canciones disponibles.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
-            }
-            return
-        }
-
-        songs.forEachIndexed { index, song ->
-            val isPlaying = index == 0
-            val borderColor = if (isPlaying) AccentColor.copy(alpha = 0.55f) else Color.Transparent
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "${index + 1}".padStart(2, '0'),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isPlaying) AccentColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.66f),
-                    modifier = Modifier.width(26.dp)
-                )
-
-                BaseCard(
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, borderColor, RoundedCornerShape(14.dp))
-                        .clickable { onOpenSong(song.id) },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CompactSongContent(
-                            song = song,
-                            modifier = Modifier.weight(1f),
-                            durationText = formatDuration(song.durationMs)
-                        )
-
-                        IconButton(onClick = { onOpenSong(song.id) }) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Abrir canción"
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -535,7 +645,7 @@ private fun formatTotalDuration(totalMs: Long): String {
     val totalMinutes = totalMs / 1000 / 60
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
-    return if (hours > 0) "$hours h $minutes min" else "$minutes min"
+    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
 private fun formatPlays(value: Long): String {
@@ -548,36 +658,15 @@ private fun formatPlays(value: Long): String {
 }
 
 private val previewSongs = listOf(
-    SongSimple(
-        id = 1L,
-        title = "Tití Me Preguntó",
-        durationMs = 210_000,
-        hlsMasterKey = "songs/titi/master.m3u8",
-        imageKey = null,
-        songType = "single",
-        totalPlays = 1_200_000L,
-        artistName = "Bad Bunny",
-        albumName = "Un Verano Sin Ti",
-        releaseDate = LocalDate.of(2022, 5, 6)
-    ),
-    SongSimple(
-        id = 2L,
-        title = "Moscow Mule",
-        durationMs = 245_000,
-        hlsMasterKey = "songs/moscow/master.m3u8",
-        imageKey = null,
-        songType = "album",
-        totalPlays = 980_000L,
-        artistName = "Bad Bunny",
-        albumName = "Un Verano Sin Ti",
-        releaseDate = LocalDate.of(2022, 5, 6)
-    )
+    SongSimple(1L, "Titi Me Pregunto", 210_000, "songs/titi/master.m3u8", null, "single", 1_200_000L, "Bad Bunny", "Un Verano Sin Ti", LocalDate.of(2022, 5, 6)),
+    SongSimple(2L, "Moscow Mule", 245_000, "songs/moscow/master.m3u8", null, "album", 980_000L, "Bad Bunny", "Un Verano Sin Ti", LocalDate.of(2022, 5, 6)),
+    SongSimple(3L, "Ojitos Lindos", 224_000, "songs/ojitos/master.m3u8", null, "album", 870_000L, "Bad Bunny", "Un Verano Sin Ti", LocalDate.of(2022, 5, 6))
 )
 
 private val previewAlbum = Album(
     id = 10L,
     title = "Un Verano Sin Ti",
-    description = "Álbum con vibra veraniega y mezcla de ritmos latinos.",
+    description = "Album con vibra veraniega y mezcla de ritmos latinos.",
     imageKey = null,
     releaseDate = LocalDate.of(2022, 5, 6),
     artists = emptyList(),
@@ -585,35 +674,32 @@ private val previewAlbum = Album(
     isLiked = true
 )
 
-@Preview(name = "Album Detail - Loading", showBackground = true, backgroundColor = 0xFF121212)
+@Preview(name = "Album - Loading", showBackground = true, backgroundColor = 0xFF121212)
 @Composable
-private fun AlbumDetailContentLoadingPreview() {
+private fun LoadingPreview() {
+    EssenceAppTheme {
+        AlbumDetailContent(state = AlbumDetailUiState.Loading, onAction = {})
+    }
+}
+
+@Preview(name = "Album - Success", showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun SuccessPreview() {
     EssenceAppTheme {
         AlbumDetailContent(
-            state = AlbumDetailUiState.Loading,
+            state = AlbumDetailUiState.Success(album = previewAlbum, isLikeSubmitting = false),
             onAction = {}
         )
     }
 }
 
-@Preview(name = "Album Detail - Error", showBackground = true, backgroundColor = 0xFF121212)
+@Preview(name = "Album - Empty", showBackground = true, backgroundColor = 0xFF121212)
 @Composable
-private fun AlbumDetailContentErrorPreview() {
-    EssenceAppTheme {
-        AlbumDetailContent(
-            state = AlbumDetailUiState.Error("Sin conexión"),
-            onAction = {}
-        )
-    }
-}
-
-@Preview(name = "Album Detail - Success", showBackground = true, backgroundColor = 0xFF121212)
-@Composable
-private fun AlbumDetailContentSuccessPreview() {
+private fun EmptyPreview() {
     EssenceAppTheme {
         AlbumDetailContent(
             state = AlbumDetailUiState.Success(
-                album = previewAlbum,
+                album = previewAlbum.copy(songs = emptyList()),
                 isLikeSubmitting = false
             ),
             onAction = {}

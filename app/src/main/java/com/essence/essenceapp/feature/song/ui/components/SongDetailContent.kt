@@ -1,32 +1,37 @@
 package com.essence.essenceapp.feature.song.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,9 +40,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.essence.essenceapp.feature.album.domain.model.AlbumSimple
 import com.essence.essenceapp.feature.artist.domain.model.ArtistSimple
 import com.essence.essenceapp.feature.song.domain.model.Song
@@ -45,16 +52,17 @@ import com.essence.essenceapp.feature.song.ui.SongDetailAction
 import com.essence.essenceapp.feature.song.ui.SongDetailUiState
 import com.essence.essenceapp.feature.song.ui.manager.PlaybackUiState
 import com.essence.essenceapp.feature.song.ui.manager.SongDetailManagerAction
-import com.essence.essenceapp.shared.ui.components.cards.BaseCard
+import com.essence.essenceapp.feature.song.ui.manager.components.PlaybackManagerContent
 import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
 import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
+import com.essence.essenceapp.ui.theme.GraphiteSurface
+import com.essence.essenceapp.ui.theme.LuxeGold
+import com.essence.essenceapp.ui.theme.MidnightBlack
+import com.essence.essenceapp.ui.theme.MutedTeal
+import com.essence.essenceapp.ui.theme.PureWhite
+import com.essence.essenceapp.ui.theme.SoftRose
 import java.time.LocalDate
-import kotlin.math.max
-
-private val AccentColor = Color(0xFF00CED1)
-private val HorizontalMargin = 20.dp
-private val SectionGap = 24.dp
 
 @Composable
 fun SongDetailContent(
@@ -65,14 +73,12 @@ fun SongDetailContent(
 ) {
     when (state) {
         SongDetailUiState.Loading -> LoadingState(modifier = modifier)
-
         is SongDetailUiState.Error -> AppErrorState(
             modifier = modifier,
             message = state.message,
             title = "No se pudo cargar la canción",
             onRetry = { onAction(SongDetailAction.Refresh) }
         )
-
         is SongDetailUiState.Success -> SuccessState(
             modifier = modifier,
             song = state.song,
@@ -87,17 +93,24 @@ fun SongDetailContent(
 @Composable
 private fun LoadingState(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(MidnightBlack),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(
+                modifier = Modifier.size(28.dp),
+                strokeWidth = 2.5.dp,
+                color = SoftRose
+            )
             Text(
                 text = "Cargando canción...",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                style = MaterialTheme.typography.bodySmall,
+                color = PureWhite.copy(alpha = 0.5f)
             )
         }
     }
@@ -114,307 +127,323 @@ private fun SuccessState(
 ) {
     val bottomClearance = LocalBottomBarClearance.current
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(bottom = bottomClearance + 24.dp),
-        verticalArrangement = Arrangement.spacedBy(SectionGap)
-    ) {
-        HeroSection(
-            song = song,
-            isLikeSubmitting = isLikeSubmitting,
-            onToggleLike = { onAction(SongDetailAction.ToggleLike) }
-        )
-
-        PlaybackSection(
-            playback = playback,
-            fallbackDurationMs = song.durationMs.toLong(),
-            onManagerAction = onManagerAction
-        )
-
-        RelationsSection(
-            song = song,
-            onAction = onAction
-        )
-    }
-}
-
-@Composable
-private fun HeroSection(
-    song: Song,
-    isLikeSubmitting: Boolean,
-    onToggleLike: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(360.dp)
-            .padding(horizontal = HorizontalMargin)
-            .clip(RoundedCornerShape(24.dp))
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
-                .matchParentSize()
+                .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.50f),
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.90f)
-                        )
+                        colors = listOf(
+                            SoftRose.copy(alpha = 0.22f),
+                            MutedTeal.copy(alpha = 0.12f),
+                            MidnightBlack.copy(alpha = 0.85f),
+                            MidnightBlack
+                        ),
+                        startY = 0f,
+                        endY = Float.POSITIVE_INFINITY
                     )
                 )
         )
 
-        LikeButton(
-            isLiked = song.isLiked,
-            isSubmitting = isLikeSubmitting,
-            onClick = onToggleLike,
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            SoftRose.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        radius = 800f
+                    )
+                )
+        )
+
+        GlassBackButton(
+            onClick = { onAction(SongDetailAction.Back) },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 16.dp, top = 12.dp)
+                .zIndex(10f)
         )
 
         Column(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .padding(
+                    top = 72.dp,
+                    bottom = bottomClearance + 24.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            CoverSection(song = song)
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            MetaRow(song = song)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            PlaybackManagerContent(
+                state = playback,
+                onAction = onManagerAction,
+                songTitle = song.title,
+                artistName = song.artists.joinToString(", ") { it.nameArtist },
+                isLiked = song.isLiked,
+                isLikeSubmitting = isLikeSubmitting,
+                onToggleLike = { onAction(SongDetailAction.ToggleLike) }
             )
 
-            Text(
-                text = song.artists.joinToString(", ") { it.nameArtist },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.75f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Spacer(modifier = Modifier.height(22.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetaPill(text = formatDuration(song.durationMs.toLong()))
-                song.songType?.takeIf { it.isNotBlank() }?.let { MetaPill(text = it) }
-                song.releaseDate?.let { MetaPill(text = it.year.toString()) }
-            }
+            DetailsIsland(
+                song = song,
+                onAction = onAction,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun LikeButton(
-    isLiked: Boolean,
-    isSubmitting: Boolean,
+private fun GlassBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = GraphiteSurface.copy(alpha = 0.5f),
+        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.08f))
     ) {
-        IconButton(
-            onClick = onClick,
-            enabled = !isSubmitting
-        ) {
-            if (isSubmitting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.padding(8.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(
-                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = if (isLiked) "Quitar like" else "Dar like",
-                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-            }
+        IconButton(onClick = onClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Volver",
+                tint = PureWhite.copy(alpha = 0.85f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun MetaPill(text: String) {
-    Box(
+private fun CoverSection(song: Song) {
+    Surface(
+        modifier = Modifier.size(260.dp),
+        shape = RoundedCornerShape(32.dp),
+        color = GraphiteSurface,
+        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.06f)),
+        shadowElevation = 24.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            SoftRose.copy(alpha = 0.3f),
+                            MutedTeal.copy(alpha = 0.2f),
+                            GraphiteSurface
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = song.title.take(2).uppercase(),
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                color = PureWhite.copy(alpha = 0.15f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetaRow(song: Song) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        song.songType?.takeIf { it.isNotBlank() }?.let {
+            MetaPill(text = it, accent = MutedTeal)
+        }
+        song.releaseDate?.let {
+            MetaPill(text = "${it.year}", accent = SoftRose)
+        }
+        song.totalPlays?.let {
+            MetaPill(text = formatPlays(it), accent = LuxeGold)
+        }
+    }
+}
+
+@Composable
+private fun DetailsIsland(
+    song: Song,
+    onAction: (SongDetailAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    GlassIsland(
+        modifier = modifier,
+        accent = MutedTeal,
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            if (song.album != null) {
+                RelationRow(
+                    icon = Icons.Default.Album,
+                    label = "Álbum",
+                    value = song.album.title,
+                    accent = LuxeGold,
+                    onClick = { onAction(SongDetailAction.OpenAlbum(song.album.detailLookup)) }
+                )
+            }
+
+            song.artists.forEach { artist ->
+                RelationRow(
+                    icon = Icons.Default.Person,
+                    label = "Artista",
+                    value = artist.nameArtist,
+                    accent = MutedTeal,
+                    onClick = { onAction(SongDetailAction.OpenArtist(artist.detailLookup)) }
+                )
+            }
+
+            RelationRow(
+                icon = Icons.Default.PlayArrow,
+                label = "Duración",
+                value = formatDuration(song.durationMs.toLong()),
+                accent = SoftRose,
+                onClick = null
+            )
+        }
+    }
+}
+
+@Composable
+private fun RelationRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    accent: Color,
+    onClick: (() -> Unit)?
+) {
+    Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onClick)
+                else Modifier
+            )
+            .padding(horizontal = 4.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Surface(
+            modifier = Modifier.size(36.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = accent.copy(alpha = 0.1f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = PureWhite.copy(alpha = 0.4f)
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = PureWhite,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetaPill(
+    text: String,
+    accent: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = accent.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.12f))
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelMedium
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = accent.copy(alpha = 0.85f)
         )
     }
 }
 
 @Composable
-private fun PlaybackSection(
-    playback: PlaybackUiState,
-    fallbackDurationMs: Long,
-    onManagerAction: (SongDetailManagerAction) -> Unit
+private fun GlassIsland(
+    modifier: Modifier = Modifier,
+    accent: Color,
+    contentPadding: PaddingValues = PaddingValues(20.dp),
+    content: @Composable BoxScope.() -> Unit
 ) {
-    val durationMs = max(playback.durationMs, fallbackDurationMs).coerceAtLeast(1L)
-    val positionMs = playback.positionMs.coerceIn(0L, durationMs)
-
-    BaseCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HorizontalMargin),
-        contentPadding = PaddingValues(16.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = GraphiteSurface.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.06f))
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = "Reproducción",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Slider(
-                value = positionMs.toFloat(),
-                onValueChange = { onManagerAction(SongDetailManagerAction.SeekTo(it.toLong())) },
-                valueRange = 0f..durationMs.toFloat()
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(formatDuration(positionMs), style = MaterialTheme.typography.bodySmall)
-                Text(formatDuration(durationMs), style = MaterialTheme.typography.bodySmall)
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                TextButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { onManagerAction(SongDetailManagerAction.Previous) }
-                ) { Text("Previous") }
-
-                Button(
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        onManagerAction(
-                            if (playback.isPlaying) SongDetailManagerAction.Pause
-                            else SongDetailManagerAction.Play
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                PureWhite.copy(alpha = 0.04f),
+                                Color.Transparent
+                            )
                         )
-                    }
-                ) {
-                    Text(if (playback.isPlaying) "Pause" else "Play")
-                }
-
-                TextButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { onManagerAction(SongDetailManagerAction.Next) }
-                ) { Text("Next") }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                TextButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { onManagerAction(SongDetailManagerAction.SeekBy(-10_000L)) }
-                ) { Text("-10s") }
-
-                TextButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { onManagerAction(SongDetailManagerAction.SeekBy(10_000L)) }
-                ) { Text("+10s") }
-
-                TextButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = { onManagerAction(SongDetailManagerAction.Stop) }
-                ) { Text("Stop") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RelationsSection(
-    song: Song,
-    onAction: (SongDetailAction) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HorizontalMargin),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Detalles",
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        if (song.album != null) {
-            RelationCard(
-                icon = Icons.Default.Album,
-                title = "Álbum",
-                subtitle = song.album.title,
-                onClick = { onAction(SongDetailAction.OpenAlbum(song.album.id)) }
+                    )
             )
-        }
 
-        song.artists.forEach { artist ->
-            RelationCard(
-                icon = Icons.Default.Person,
-                title = "Artista",
-                subtitle = artist.nameArtist,
-                onClick = { onAction(SongDetailAction.OpenArtist(artist.id)) }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                accent.copy(alpha = 0.08f),
+                                Color.Transparent
+                            )
+                        )
+                    )
             )
-        }
 
-        RelationCard(
-            icon = Icons.Default.MusicNote,
-            title = "Tipo",
-            subtitle = song.songType ?: "No definido",
-            onClick = {}
-        )
-    }
-}
-
-@Composable
-private fun RelationCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    BaseCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = AccentColor
+            Box(
+                modifier = Modifier.padding(contentPadding),
+                content = content
             )
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f)
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
         }
     }
 }
@@ -424,6 +453,14 @@ private fun formatDuration(durationMs: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
+}
+
+private fun formatPlays(value: Int): String {
+    return when {
+        value >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", value / 1_000_000f)
+        value >= 1_000 -> String.format(java.util.Locale.US, "%.1fK", value / 1_000f)
+        else -> value.toString()
+    }
 }
 
 private val previewSong = Song(
@@ -436,55 +473,37 @@ private val previewSong = Song(
     totalPlays = 1_200_000,
     isLiked = true,
     artists = listOf(
-        ArtistSimple(id = 10L, nameArtist = "Bad Bunny", imageKey = null, artistUrl = "artists/bad-bunny")
+        ArtistSimple(10L, "Bad Bunny", null, "artists/bad-bunny"),
+        ArtistSimple(11L, "Chencho Corleone", null, "artists/chencho")
     ),
-    album = AlbumSimple(
-        id = 20L,
-        title = "Un Verano Sin Ti",
-        imageKey = null,
-        albumUrl = "albums/un-verano-sin-ti",
-        artists = listOf("Bad Bunny"),
-        release = LocalDate.of(2022, 5, 6)
-    ),
+    album = AlbumSimple(20L, "Un Verano Sin Ti", null, "albums/uvst", listOf("Bad Bunny"), LocalDate.of(2022, 5, 6)),
     releaseDate = LocalDate.of(2022, 5, 6)
 )
 
-@Preview(name = "Song Detail - Loading", showBackground = true, backgroundColor = 0xFF121212)
+@Preview(name = "Song - Playing", showBackground = true, backgroundColor = 0xFF121212)
 @Composable
-private fun SongDetailContentLoadingPreview() {
-    EssenceAppTheme {
-        SongDetailContent(
-            state = SongDetailUiState.Loading,
-            onAction = {},
-            onManagerAction = {}
-        )
-    }
-}
-
-@Preview(name = "Song Detail - Error", showBackground = true, backgroundColor = 0xFF121212)
-@Composable
-private fun SongDetailContentErrorPreview() {
-    EssenceAppTheme {
-        SongDetailContent(
-            state = SongDetailUiState.Error("Sin conexión"),
-            onAction = {},
-            onManagerAction = {}
-        )
-    }
-}
-
-@Preview(name = "Song Detail - Success", showBackground = true, backgroundColor = 0xFF121212)
-@Composable
-private fun SongDetailContentSuccessPreview() {
+private fun PlayingPreview() {
     EssenceAppTheme {
         SongDetailContent(
             state = SongDetailUiState.Success(
                 song = previewSong,
-                playback = PlaybackUiState(
-                    isPlaying = true,
-                    positionMs = 72_000L,
-                    durationMs = 210_000L
-                ),
+                playback = PlaybackUiState(isPlaying = true, positionMs = 72_000L, durationMs = 210_000L),
+                isLikeSubmitting = false
+            ),
+            onAction = {},
+            onManagerAction = {}
+        )
+    }
+}
+
+@Preview(name = "Song - Paused", showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun PausedPreview() {
+    EssenceAppTheme {
+        SongDetailContent(
+            state = SongDetailUiState.Success(
+                song = previewSong,
+                playback = PlaybackUiState(isPlaying = false, positionMs = 45_000L, durationMs = 210_000L),
                 isLikeSubmitting = false
             ),
             onAction = {},

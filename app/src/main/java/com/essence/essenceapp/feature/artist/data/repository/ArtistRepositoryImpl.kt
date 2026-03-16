@@ -7,10 +7,10 @@ import com.essence.essenceapp.feature.artist.domain.repository.ArtistRepository
 
 class ArtistRepositoryImpl(
     private val apiService: ArtistApiService
-): ArtistRepository {
+) : ArtistRepository {
 
-    override suspend fun getArtist(artistId: Long): Artist? {
-        val apiDTO = apiService.getArtist(artistId)
+    override suspend fun getArtist(artistLookup: String): Artist? {
+        val apiDTO = apiService.getArtist(artistLookup)
         return apiDTO?.artistToDomain()
     }
 

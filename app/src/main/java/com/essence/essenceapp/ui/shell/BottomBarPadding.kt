@@ -7,3 +7,5 @@ import androidx.compose.ui.unit.dp
 val LocalBottomBarClearance = staticCompositionLocalOf<Dp> { 0.dp }
 
 val FloatingBottomBarHeight = 92.dp
+
+val FloatingBottomBarWithMiniPlayerHeight = 160.dp

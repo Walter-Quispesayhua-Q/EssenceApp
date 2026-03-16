@@ -1,11 +1,13 @@
 package com.essence.essenceapp.feature.playlist.ui.form
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistRequest
 import com.essence.essenceapp.feature.playlist.domain.usecase.CreatePlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.GetForUpdateUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.UpdatePlaylistUseCase
+import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,15 +31,39 @@ class PlaylistFormViewModel @Inject constructor(
 
     fun loadForEdit(id: Long) {
         editingId = id
+
         viewModelScope.launch {
-            val result = getForUpdateUseCase(id)
-            result.onSuccess { playlist ->
-                _uiState.value = PlaylistFormUiState.Editing(
-                    form = PlaylistFormState(
-                        title = playlist.title,
-                        description = playlist.description ?: "",
-                        isPublic = playlist.isPublic
+            _uiState.value = PlaylistFormUiState.Editing(isSubmitting = true)
+
+            try {
+                Log.e("PLAYLIST_EDIT_DEBUG", "loadForEdit id=$id")
+
+                val result = getForUpdateUseCase(id)
+
+                result.onSuccess { playlist ->
+                    Log.e("PLAYLIST_EDIT_DEBUG", "loadForEdit success playlistId=${playlist.id}")
+
+                    _uiState.value = PlaylistFormUiState.Editing(
+                        form = PlaylistFormState(
+                            title = playlist.title,
+                            description = playlist.description ?: "",
+                            isPublic = playlist.isPublic
+                        )
                     )
+                }
+
+                result.onFailure { error ->
+                    Log.e("PLAYLIST_EDIT_DEBUG", "loadForEdit failure=${error.message}", error)
+
+                    _uiState.value = PlaylistFormUiState.Editing(
+                        errorMessage = error.toUserMessage()
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("PLAYLIST_EDIT_DEBUG", "loadForEdit exception=${e.message}", e)
+
+                _uiState.value = PlaylistFormUiState.Editing(
+                    errorMessage = e.toUserMessage()
                 )
             }
         }
@@ -54,8 +80,8 @@ class PlaylistFormViewModel @Inject constructor(
             is PlaylistFormAction.IsPublicChanged -> updateEditing {
                 it.copy(form = it.form.copy(isPublic = action.value))
             }
-            is PlaylistFormAction.Submit -> submit()
-            is PlaylistFormAction.ClearError -> updateEditing {
+            PlaylistFormAction.Submit -> submit()
+            PlaylistFormAction.ClearError -> updateEditing {
                 it.copy(errorMessage = null)
             }
         }
@@ -74,21 +100,37 @@ class PlaylistFormViewModel @Inject constructor(
                 isPublic = current.form.isPublic
             )
 
-            val result = if (editingId != null) {
-                updatePlaylistUseCase(editingId!!, request)
-            } else {
-                createPlaylistUseCase(request)
-            }
+            try {
+                Log.e("PLAYLIST_EDIT_DEBUG", "submit editingId=$editingId title=${request.title} isPublic=${request.isPublic}")
 
-            result.onSuccess {
-                _uiState.value = PlaylistFormUiState.Success
-            }
+                val result = if (editingId != null) {
+                    updatePlaylistUseCase(editingId!!, request)
+                } else {
+                    createPlaylistUseCase(request)
+                }
 
-            result.onFailure { error ->
+                result.onSuccess {
+                    Log.e("PLAYLIST_EDIT_DEBUG", "submit success")
+                    _uiState.value = PlaylistFormUiState.Success
+                }
+
+                result.onFailure { error ->
+                    Log.e("PLAYLIST_EDIT_DEBUG", "submit failure=${error.message}", error)
+
+                    updateEditing {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = error.message
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("PLAYLIST_EDIT_DEBUG", "submit exception=${e.message}", e)
+
                 updateEditing {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = error.message
+                        errorMessage = e.toUserMessage()
                     )
                 }
             }
@@ -103,6 +145,7 @@ class PlaylistFormViewModel @Inject constructor(
             _uiState.value = transform(current)
         }
     }
+
     fun initialize(playlistId: Long?) {
         if (playlistId == null) {
             editingId = null

@@ -20,23 +20,22 @@ fun NavGraphBuilder.albumGraph(
         composable(
             route = AlbumRoutes.ALBUM_DETAIL,
             arguments = listOf(
-                navArgument(AlbumRoutes.ALBUM_ID) { type = NavType.LongType }
+                navArgument(AlbumRoutes.ALBUM_LOOKUP) { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val args = backStackEntry.arguments
-            val albumId = args
-                ?.takeIf { it.containsKey(AlbumRoutes.ALBUM_ID) }
-                ?.getLong(AlbumRoutes.ALBUM_ID)
+            val albumLookup = backStackEntry.arguments?.getString(AlbumRoutes.ALBUM_LOOKUP)
 
-            if (albumId == null) {
+            if (albumLookup.isNullOrBlank()) {
                 LaunchedEffect(Unit) { navController.popBackStack() }
                 return@composable
             }
 
             AlbumDetailScreen(
-                albumId = albumId,
+                albumLookup = albumLookup,
                 onBack = { navController.popBackStack() },
-                onOpenSong = { songId -> navController.navigate(SongRoutes.detail(songId)) }
+                onOpenSong = { songLookup ->
+                    navController.navigate(SongRoutes.detail(songLookup))
+                }
             )
         }
     }

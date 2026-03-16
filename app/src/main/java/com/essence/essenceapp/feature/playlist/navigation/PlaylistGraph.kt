@@ -36,8 +36,8 @@ fun NavGraphBuilder.playlistGraph(
         composable(route = PlaylistRoutes.PLAYLIST_HISTORY) {
             HistoryScreen(
                 onBack = { navController.popBackStack() },
-                onOpenSong = { songId ->
-                    navController.navigate(SongRoutes.detail(songId))
+                onOpenSong = { songLookup ->
+                    navController.navigate(SongRoutes.detail(songLookup))
                 }
             )
         }

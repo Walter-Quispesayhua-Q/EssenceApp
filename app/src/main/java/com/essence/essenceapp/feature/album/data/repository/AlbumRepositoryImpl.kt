@@ -7,12 +7,13 @@ import com.essence.essenceapp.feature.album.domain.repository.AlbumRepository
 
 class AlbumRepositoryImpl(
     private val apiService: AlbumApiService
-): AlbumRepository {
+) : AlbumRepository {
 
-    override suspend fun getAlbum(albumId: Long): Album? {
-        val apiDTO = apiService.getAlbum(albumId)
+    override suspend fun getAlbum(albumLookup: String): Album? {
+        val apiDTO = apiService.getAlbum(albumLookup)
         return apiDTO?.albumToDomain()
     }
+
     override suspend fun addLikeAlbum(albumId: Long) {
         apiService.addLikeAlbum(albumId)
     }

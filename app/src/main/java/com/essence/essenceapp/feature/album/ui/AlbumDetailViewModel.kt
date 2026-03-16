@@ -2,9 +2,9 @@ package com.essence.essenceapp.feature.album.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.essence.essenceapp.feature.album.domain.usecase.AddLikeAlbumUseCase
+import com.essence.essenceapp.feature.album.domain.usecase.DeleteLikeAlbumUseCase
 import com.essence.essenceapp.feature.album.domain.usecase.GetAlbumUseCase
-import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
-import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,21 +16,21 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
     private val getAlbumUseCase: GetAlbumUseCase,
-    private val addLikeAlbumUseCase: AddLikeSongUseCase,
-    private val deleteLikeAlbumUseCase: DeleteLikeSongUseCase
+    private val addLikeAlbumUseCase: AddLikeAlbumUseCase,
+    private val deleteLikeAlbumUseCase: DeleteLikeAlbumUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AlbumDetailUiState>(AlbumDetailUiState.Loading)
     val uiState: StateFlow<AlbumDetailUiState> = _uiState.asStateFlow()
 
-    private var currentAlbumId: Long? = null
+    private var currentAlbumLookup: String? = null
 
-    fun loadAlbum(id: Long) {
-        currentAlbumId = id
+    fun loadAlbum(lookup: String) {
+        currentAlbumLookup = lookup
         viewModelScope.launch {
             _uiState.value = AlbumDetailUiState.Loading
             try {
-                val result = getAlbumUseCase(id)
+                val result = getAlbumUseCase(lookup)
                 result.onSuccess { album ->
                     _uiState.value = AlbumDetailUiState.Success(
                         album = album,
@@ -48,12 +48,13 @@ class AlbumDetailViewModel @Inject constructor(
 
     fun onAction(action: AlbumDetailAction) {
         when (action) {
-            AlbumDetailAction.Refresh -> currentAlbumId?.let(::loadAlbum)
+            AlbumDetailAction.Refresh -> currentAlbumLookup?.let(::loadAlbum)
             AlbumDetailAction.Back -> Unit
             is AlbumDetailAction.OpenSong -> Unit
             AlbumDetailAction.ToggleLike -> toggleLike()
         }
     }
+
     private fun toggleLike() {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         if (current.isLikeSubmitting) return

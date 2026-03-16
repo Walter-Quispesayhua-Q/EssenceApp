@@ -11,8 +11,8 @@ interface ArtistApiService {
         const val BASE = "artist"
     }
 
-    @GET("$BASE/{artistId}")
-    suspend fun getArtist(@Path("artistId") artistId: Long): ArtistResponseApiDTO?
+    @GET("$BASE/{artistLookup}")
+    suspend fun getArtist(@Path("artistLookup") artistLookup: String): ArtistResponseApiDTO?
 
     @POST("$BASE/{artistId}/like")
     suspend fun addLikeArtist(@Path("artistId") artistId: Long)

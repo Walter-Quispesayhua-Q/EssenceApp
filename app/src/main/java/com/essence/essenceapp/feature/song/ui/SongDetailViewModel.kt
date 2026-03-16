@@ -26,7 +26,7 @@ class SongDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<SongDetailUiState>(SongDetailUiState.Loading)
     val uiState: StateFlow<SongDetailUiState> = _uiState.asStateFlow()
 
-    private var currentSongId: Long? = null
+    private var currentSongLookup: String? = null
 
     init {
         viewModelScope.launch {
@@ -39,12 +39,12 @@ class SongDetailViewModel @Inject constructor(
         }
     }
 
-    fun loadSong(id: Long) {
-        currentSongId = id
+    fun loadSong(lookup: String) {
+        currentSongLookup = lookup
         viewModelScope.launch {
             _uiState.value = SongDetailUiState.Loading
             try {
-                val result = getSongUseCase(id)
+                val result = getSongUseCase(lookup)
                 result.onSuccess { song ->
                     _uiState.value = SongDetailUiState.Success(
                         song = song,
@@ -64,7 +64,7 @@ class SongDetailViewModel @Inject constructor(
     fun onAction(action: SongDetailAction) {
         when (action) {
             SongDetailAction.Back -> Unit
-            SongDetailAction.Refresh -> currentSongId?.let(::loadSong)
+            SongDetailAction.Refresh -> currentSongLookup?.let(::loadSong)
             is SongDetailAction.OpenAlbum -> Unit
             is SongDetailAction.OpenArtist -> Unit
             SongDetailAction.ToggleLike -> toggleLike()

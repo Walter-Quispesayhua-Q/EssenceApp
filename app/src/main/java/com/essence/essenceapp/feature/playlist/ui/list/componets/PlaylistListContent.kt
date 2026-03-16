@@ -1,5 +1,9 @@
 package com.essence.essenceapp.feature.playlist.ui.list.componets
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,47 +11,60 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.QueueMusic
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistSimple
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistsSimples
 import com.essence.essenceapp.feature.playlist.ui.list.PlaylistListAction
 import com.essence.essenceapp.feature.playlist.ui.list.PlaylistListUiState
-import com.essence.essenceapp.shared.ui.components.cards.BaseCard
 import com.essence.essenceapp.shared.ui.components.cards.playlist.CompactPlaylistContent
-import com.essence.essenceapp.shared.ui.components.cards.playlist.GridPlaylistContent
 import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
-
-private val AccentColor = Color(0xFF00CED1)
-private val DividerColor = Color.White.copy(alpha = 0.06f)
+import com.essence.essenceapp.ui.theme.LuxeGold
+import com.essence.essenceapp.ui.theme.MutedTeal
+import com.essence.essenceapp.ui.theme.SoftRose
 
 private sealed interface PlaylistSectionState {
     data object Loading : PlaylistSectionState
@@ -59,6 +76,8 @@ private data class QuickAccessItem(
     val title: String,
     val value: String?,
     val icon: ImageVector,
+    val tint: Color,
+    val badge: String? = null,
     val action: PlaylistListAction? = null
 )
 
@@ -66,18 +85,22 @@ private val quickAccessItems = listOf(
     QuickAccessItem(
         title = "Canciones que te gustan",
         value = "0",
-        icon = Icons.Default.Favorite
+        icon = Icons.Default.Favorite,
+        tint = SoftRose
     ),
     QuickAccessItem(
         title = "Escuchado recientemente",
         value = "Hoy",
         icon = Icons.Default.History,
+        tint = MutedTeal,
         action = PlaylistListAction.OpenHistory
     ),
     QuickAccessItem(
         title = "Descargas",
         value = null,
-        icon = Icons.Default.Download
+        icon = Icons.Default.Download,
+        tint = LuxeGold,
+        badge = "Próximamente"
     )
 )
 
@@ -92,118 +115,127 @@ fun PlaylistListContent(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = bottomClearance + 20.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = bottomClearance + 20.dp)
     ) {
-        item { QuickAccessSection(items = quickAccessItems, onAction = onAction) }
-
-        item { SectionDivider() }
-
         item {
-            SectionContainer(
-                title = "Mis Playlists",
-                subtitle = null,
-                trailing = {
-                    Text(
-                        text = counterText(mySection),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.82f)
-                    )
-                }
-            ) {
-                PlaylistSectionBody(
-                    state = mySection,
-                    emptyTitle = "Aún no tienes playlists",
-                    emptySubtitle = "Crea tu primera playlist con el botón +",
-                    isPublicSection = false,
-                    onAction = onAction
-                )
-            }
+            QuickAccessIsland(
+                items = quickAccessItems,
+                onAction = onAction,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
         }
 
-        item { SectionDivider() }
+        item { GradientSectionDivider() }
 
         item {
-            SectionContainer(
+            SectionHeader(
+                title = "Mis Playlists",
+                trailing = counterText(mySection),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        item {
+            PlaylistSectionBody(
+                state = mySection,
+                emptyTitle = "Aún no tienes playlists",
+                emptySubtitle = "Crea tu primera playlist con el botón +",
+                isPublicSection = false,
+                onAction = onAction,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        item { GradientSectionDivider() }
+
+        item {
+            SectionHeader(
                 title = "Playlists Públicas",
                 subtitle = "Curadas por la comunidad",
-                trailing = {
-                    TextButton(onClick = {}) {
-                        Text(text = "Ver todo", color = AccentColor)
-                    }
-                }
-            ) {
-                PlaylistSectionBody(
-                    state = publicSection,
-                    emptyTitle = "No hay playlists públicas",
-                    emptySubtitle = "Cuando existan, aparecerán aquí.",
-                    isPublicSection = true,
-                    onAction = onAction
-                )
-            }
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        item {
+            PlaylistSectionBody(
+                state = publicSection,
+                emptyTitle = "No hay playlists públicas",
+                emptySubtitle = "Cuando existan, aparecerán aquí.",
+                isPublicSection = true,
+                onAction = onAction,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
         }
     }
 }
 
-private fun mapStateToSections(
-    state: PlaylistListUiState
-): Pair<PlaylistSectionState, PlaylistSectionState> =
-    when (state) {
-        is PlaylistListUiState.Idle,
-        is PlaylistListUiState.Loading -> PlaylistSectionState.Loading to PlaylistSectionState.Loading
-
-        is PlaylistListUiState.Error ->
-            PlaylistSectionState.Error(state.message) to PlaylistSectionState.Error(state.message)
-
-        is PlaylistListUiState.Success ->
-            PlaylistSectionState.Data(state.playlist.myPlaylists.orEmpty()) to
-                    PlaylistSectionState.Data(state.playlist.playlistsPublic.orEmpty())
-    }
-
 @Composable
-private fun QuickAccessSection(
+private fun QuickAccessIsland(
     items: List<QuickAccessItem>,
-    onAction: (PlaylistListAction) -> Unit
+    onAction: (PlaylistListAction) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large
     ) {
-        items.forEach { item ->
-            BaseCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = item.action?.let { action -> { onAction(action) } },
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
-            ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            items.forEachIndexed { index, item ->
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (item.action != null) Modifier.clickable { onAction(item.action) }
+                            else Modifier
+                        )
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = item.icon,
                             contentDescription = null,
-                            tint = AccentColor
+                            tint = item.tint,
+                            modifier = Modifier.size(22.dp)
                         )
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
-                    if (!item.value.isNullOrBlank()) {
+                    if (item.badge != null) {
+                        Surface(
+                            color = item.tint.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = item.badge,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = item.tint
+                            )
+                        }
+                    } else if (!item.value.isNullOrBlank()) {
                         Text(
                             text = item.value,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
+                }
+
+                if (index < items.size - 1) {
+                    IslandDivider()
                 }
             }
         }
@@ -211,45 +243,74 @@ private fun QuickAccessSection(
 }
 
 @Composable
-private fun SectionContainer(
+private fun SectionHeader(
     title: String,
-    subtitle: String?,
-    trailing: @Composable () -> Unit,
-    content: @Composable () -> Unit
+    subtitle: String? = null,
+    trailing: String? = null,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = if (subtitle == null) Alignment.CenterVertically else Alignment.Top
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = if (subtitle == null) Alignment.CenterVertically else Alignment.Top
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(18.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(MutedTeal, MutedTeal.copy(alpha = 0.3f))
+                        ),
+                        shape = RoundedCornerShape(2.dp)
+                    )
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
                 Text(
                     text = title,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-
                 if (!subtitle.isNullOrBlank()) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                     )
                 }
             }
-
-            trailing()
         }
 
-        content()
+        if (!trailing.isNullOrBlank()) {
+            Text(
+                text = trailing,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+        }
     }
+}
+
+@Composable
+private fun GradientSectionDivider() {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 32.dp)
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        Color.Transparent
+                    )
+                )
+            )
+    )
 }
 
 @Composable
@@ -258,32 +319,35 @@ private fun PlaylistSectionBody(
     emptyTitle: String,
     emptySubtitle: String,
     isPublicSection: Boolean,
-    onAction: (PlaylistListAction) -> Unit
+    onAction: (PlaylistListAction) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     when (state) {
-        PlaylistSectionState.Loading -> SectionLoadingCard()
-
-        is PlaylistSectionState.Error -> SectionErrorCard(
+        PlaylistSectionState.Loading -> SectionLoadingContent(modifier = modifier)
+        is PlaylistSectionState.Error -> SectionErrorContent(
             message = state.message,
-            onRetry = { onAction(PlaylistListAction.Refresh) }
+            onRetry = { onAction(PlaylistListAction.Refresh) },
+            modifier = modifier
         )
-
         is PlaylistSectionState.Data -> {
             if (state.items.isEmpty()) {
-                EmptySectionCard(
+                EmptySectionContent(
                     title = emptyTitle,
-                    subtitle = emptySubtitle
+                    subtitle = emptySubtitle,
+                    modifier = modifier
                 )
             } else if (isPublicSection) {
-                PublicPlaylistsRow(
-                    playlists = state.items,
-                    onOpen = { onAction(PlaylistListAction.OpenDetail(it)) }
-                )
-            } else {
-                MyPlaylistsColumn(
+                PublicPlaylistsIsland(
                     playlists = state.items,
                     onOpen = { onAction(PlaylistListAction.OpenDetail(it)) },
-                    onDelete = { onAction(PlaylistListAction.DeletePlaylist(it)) }
+                    modifier = modifier
+                )
+            } else {
+                MyPlaylistsIsland(
+                    playlists = state.items,
+                    onOpen = { onAction(PlaylistListAction.OpenDetail(it)) },
+                    onDelete = { onAction(PlaylistListAction.DeletePlaylist(it)) },
+                    modifier = modifier
                 )
             }
         }
@@ -291,34 +355,67 @@ private fun PlaylistSectionBody(
 }
 
 @Composable
-private fun MyPlaylistsColumn(
+private fun MyPlaylistsIsland(
     playlists: List<PlaylistSimple>,
     onOpen: (Long) -> Unit,
-    onDelete: (Long) -> Unit
+    onDelete: (Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        playlists.forEach { playlist ->
-            BaseCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpen(playlist.id) },
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CompactPlaylistContent(
-                        playlist = playlist,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { onDelete(playlist.id) }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar playlist",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            playlists.forEachIndexed { index, playlist ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                            onDelete(playlist.id)
+                            true
+                        } else false
                     }
+                )
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    backgroundContent = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
+                                .padding(end = 72.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
+                            ) {
+//                                Icon(
+//                                    imageVector = Icons.Default.Delete,
+//                                    contentDescription = "Eliminar",
+//                                    tint = MaterialTheme.colorScheme.error,
+//                                    modifier = Modifier.padding(10.dp)
+//                                )
+                            }
+                        }
+                    },
+                    enableDismissFromStartToEnd = false,
+                    enableDismissFromEndToStart = true
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                            .clickable { onOpen(playlist.id) }
+                            .padding(horizontal = 14.dp, vertical = 12.dp)
+                    ) {
+                        CompactPlaylistContent(playlist = playlist)
+                    }
+                }
+
+                if (index < playlists.size - 1) {
+                    IslandDivider()
                 }
             }
         }
@@ -326,105 +423,215 @@ private fun MyPlaylistsColumn(
 }
 
 @Composable
-private fun PublicPlaylistsRow(
+private fun PublicPlaylistsIsland(
     playlists: List<PlaylistSimple>,
-    onOpen: (Long) -> Unit
+    onOpen: (Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(playlists, key = { it.id }) { playlist ->
-            BaseCard(
-                modifier = Modifier.clickable { onOpen(playlist.id) },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+    var isExpanded by remember { mutableStateOf(false) }
+    val previewCount = 3
+    val hasMore = playlists.size > previewCount
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            playlists.take(previewCount).forEachIndexed { index, playlist ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpen(playlist.id) }
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    CompactPlaylistContent(playlist = playlist)
+                }
+                if (index < minOf(previewCount, playlists.size) - 1 || isExpanded) {
+                    IslandDivider()
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
             ) {
-                GridPlaylistContent(playlist = playlist)
+                Column {
+                    playlists.drop(previewCount).forEachIndexed { index, playlist ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpen(playlist.id) }
+                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                        ) {
+                            CompactPlaylistContent(playlist = playlist)
+                        }
+                        if (index < playlists.size - previewCount - 1) {
+                            IslandDivider()
+                        }
+                    }
+                }
+            }
+
+            if (hasMore) {
+                IslandDivider()
+                TextButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (isExpanded) "Ver menos"
+                        else "Ver todo (${playlists.size})",
+                        color = MutedTeal,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SectionLoadingCard() {
-    BaseCard(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
+private fun SectionLoadingContent(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MutedTeal
             )
             Text(
                 text = "Cargando playlists...",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
 }
 
 @Composable
-private fun SectionErrorCard(
+private fun SectionErrorContent(
     message: String,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    BaseCard(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(14.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
-            Button(
-                onClick = onRetry,
-                modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Reintentar")
+                Icon(
+                    imageVector = Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            OutlinedButton(
+                onClick = onRetry,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+                border = BorderStroke(1.dp, MutedTeal),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MutedTeal)
+            ) {
+                Text(
+                    text = "Reintentar",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
 }
 
 @Composable
-private fun EmptySectionCard(
+private fun EmptySectionContent(
     title: String,
-    subtitle: String
+    subtitle: String,
+    modifier: Modifier = Modifier
 ) {
-    BaseCard(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.QueueMusic,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                modifier = Modifier.size(32.dp)
+            )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 @Composable
-private fun SectionDivider() {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(DividerColor)
+private fun IslandDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 14.dp),
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
     )
 }
+
+private fun mapStateToSections(
+    state: PlaylistListUiState
+): Pair<PlaylistSectionState, PlaylistSectionState> =
+    when (state) {
+        is PlaylistListUiState.Idle,
+        is PlaylistListUiState.Loading ->
+            PlaylistSectionState.Loading to PlaylistSectionState.Loading
+
+        is PlaylistListUiState.Error ->
+            PlaylistSectionState.Error(state.message) to PlaylistSectionState.Error(state.message)
+
+        is PlaylistListUiState.Success ->
+            PlaylistSectionState.Data(state.playlist.myPlaylists.orEmpty()) to
+                    PlaylistSectionState.Data(state.playlist.playlistsPublic.orEmpty())
+    }
 
 private fun counterText(state: PlaylistSectionState): String =
     when (state) {
@@ -435,57 +642,27 @@ private fun counterText(state: PlaylistSectionState): String =
 
 private val previewMyPlaylists = listOf(
     PlaylistSimple(id = 1L, title = "Lo-Fi Study", isPublic = false, totalLikes = 12),
-    PlaylistSimple(id = 2L, title = "Gym Power", isPublic = true, totalLikes = 40)
+    PlaylistSimple(id = 2L, title = "Gym Power", isPublic = true, totalLikes = 40),
+    PlaylistSimple(id = 3L, title = "Road Trip", isPublic = false, totalLikes = 8)
 )
 
 private val previewPublicPlaylists = listOf(
     PlaylistSimple(id = 11L, title = "Chill Nights", isPublic = true, totalLikes = 120),
     PlaylistSimple(id = 12L, title = "Indie Essentials", isPublic = true, totalLikes = 95),
-    PlaylistSimple(id = 13L, title = "Focus Mode", isPublic = true, totalLikes = 67)
+    PlaylistSimple(id = 13L, title = "Focus Mode", isPublic = true, totalLikes = 67),
+    PlaylistSimple(id = 14L, title = "Latin Vibes", isPublic = true, totalLikes = 210),
+    PlaylistSimple(id = 15L, title = "Electronic Dreams", isPublic = true, totalLikes = 88)
 )
 
-@Preview(name = "Playlist List - Idle", showBackground = true, backgroundColor = 0xFF121212)
+@Preview(name = "Playlist List - Success", showBackground = true, backgroundColor = 0xFF121212)
 @Composable
-private fun PlaylistListContentIdlePreview() {
-    EssenceAppTheme {
-        PlaylistListContent(
-            state = PlaylistListUiState.Idle,
-            onAction = {}
-        )
-    }
-}
-
-@Preview(name = "Playlist List - Loading", showBackground = true, backgroundColor = 0xFF121212)
-@Composable
-private fun PlaylistListContentLoadingPreview() {
-    EssenceAppTheme {
-        PlaylistListContent(
-            state = PlaylistListUiState.Loading,
-            onAction = {}
-        )
-    }
-}
-
-@Preview(name = "Playlist List - Error", showBackground = true, backgroundColor = 0xFF121212)
-@Composable
-private fun PlaylistListContentErrorPreview() {
-    EssenceAppTheme {
-        PlaylistListContent(
-            state = PlaylistListUiState.Error(message = "No se pudo cargar las playlists."),
-            onAction = {}
-        )
-    }
-}
-
-@Preview(name = "Playlist List - Success (Empty)", showBackground = true, backgroundColor = 0xFF121212)
-@Composable
-private fun PlaylistListContentSuccessEmptyPreview() {
+private fun PlaylistListSuccessPreview() {
     EssenceAppTheme {
         PlaylistListContent(
             state = PlaylistListUiState.Success(
                 playlist = PlaylistsSimples(
-                    myPlaylists = emptyList(),
-                    playlistsPublic = emptyList()
+                    myPlaylists = previewMyPlaylists,
+                    playlistsPublic = previewPublicPlaylists
                 )
             ),
             onAction = {}
@@ -493,15 +670,23 @@ private fun PlaylistListContentSuccessEmptyPreview() {
     }
 }
 
-@Preview(name = "Playlist List - Success (Data)", showBackground = true, backgroundColor = 0xFF121212)
+@Preview(name = "Playlist List - Loading", showBackground = true, backgroundColor = 0xFF121212)
 @Composable
-private fun PlaylistListContentSuccessDataPreview() {
+private fun PlaylistListLoadingPreview() {
+    EssenceAppTheme {
+        PlaylistListContent(state = PlaylistListUiState.Loading, onAction = {})
+    }
+}
+
+@Preview(name = "Playlist List - Empty", showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun PlaylistListEmptyPreview() {
     EssenceAppTheme {
         PlaylistListContent(
             state = PlaylistListUiState.Success(
                 playlist = PlaylistsSimples(
-                    myPlaylists = previewMyPlaylists,
-                    playlistsPublic = previewPublicPlaylists
+                    myPlaylists = emptyList(),
+                    playlistsPublic = emptyList()
                 )
             ),
             onAction = {}

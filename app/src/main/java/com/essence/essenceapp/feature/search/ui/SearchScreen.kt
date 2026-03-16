@@ -1,5 +1,6 @@
 package com.essence.essenceapp.feature.search.ui
 
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -13,9 +14,9 @@ import com.essence.essenceapp.feature.search.ui.components.SearchTopBar
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel(),
-    onOpenSong: (Long) -> Unit = {},
-    onOpenAlbum: (Long) -> Unit = {},
-    onOpenArtist: (Long) -> Unit = {}
+    onOpenSong: (String) -> Unit = {},
+    onOpenAlbum: (String) -> Unit = {},
+    onOpenArtist: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -35,7 +36,9 @@ fun SearchScreen(
         }
     ) { innerPadding ->
         SearchContent(
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier
+                .padding(innerPadding)
+                .imePadding(),
             state = state,
             onAction = viewModel::onAction,
             onOpenSong = onOpenSong,

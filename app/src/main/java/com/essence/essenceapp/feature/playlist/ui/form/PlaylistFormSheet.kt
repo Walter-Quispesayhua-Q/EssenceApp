@@ -2,7 +2,9 @@ package com.essence.essenceapp.feature.playlist.ui.form
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,13 +32,18 @@ fun PlaylistFormSheet(
         if (state is PlaylistFormUiState.Success) onSuccess()
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.background,
+        tonalElevation = 0.dp
+    ) {
         PlaylistFormContent(
             state = state,
             isEditing = playlistId != null,
             onAction = viewModel::onAction,
             onDismiss = onDismiss,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
     }
 }

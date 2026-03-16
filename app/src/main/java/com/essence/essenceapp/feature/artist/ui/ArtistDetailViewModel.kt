@@ -2,9 +2,9 @@ package com.essence.essenceapp.feature.artist.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.essence.essenceapp.feature.artist.domain.usecase.AddLikeArtistUseCase
+import com.essence.essenceapp.feature.artist.domain.usecase.DeleteLikeArtistUseCase
 import com.essence.essenceapp.feature.artist.domain.usecase.GetArtistUseCase
-import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
-import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,21 +16,21 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ArtistDetailViewModel @Inject constructor(
     private val getArtistUseCase: GetArtistUseCase,
-    private val addLikeArtistUseCase: AddLikeSongUseCase,
-    private val deleteLikeArtistUseCase: DeleteLikeSongUseCase
+    private val addLikeArtistUseCase: AddLikeArtistUseCase,
+    private val deleteLikeArtistUseCase: DeleteLikeArtistUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArtistDetailUiState>(ArtistDetailUiState.Loading)
     val uiState: StateFlow<ArtistDetailUiState> = _uiState.asStateFlow()
 
-    private var currentArtistId: Long? = null
+    private var currentArtistLookup: String? = null
 
-    fun loadArtist(id: Long) {
-        currentArtistId = id
+    fun loadArtist(lookup: String) {
+        currentArtistLookup = lookup
         viewModelScope.launch {
             _uiState.value = ArtistDetailUiState.Loading
             try {
-                val result = getArtistUseCase(id)
+                val result = getArtistUseCase(lookup)
                 result.onSuccess { artist ->
                     _uiState.value = ArtistDetailUiState.Success(
                         artist = artist,
@@ -48,13 +48,14 @@ class ArtistDetailViewModel @Inject constructor(
 
     fun onAction(action: ArtistDetailAction) {
         when (action) {
-            ArtistDetailAction.Refresh -> currentArtistId?.let(::loadArtist)
+            ArtistDetailAction.Refresh -> currentArtistLookup?.let(::loadArtist)
             ArtistDetailAction.Back -> Unit
             is ArtistDetailAction.OpenSong -> Unit
             is ArtistDetailAction.OpenAlbum -> Unit
             ArtistDetailAction.ToggleLike -> toggleLike()
         }
     }
+
     private fun toggleLike() {
         val current = _uiState.value as? ArtistDetailUiState.Success ?: return
         if (current.isLikeSubmitting) return

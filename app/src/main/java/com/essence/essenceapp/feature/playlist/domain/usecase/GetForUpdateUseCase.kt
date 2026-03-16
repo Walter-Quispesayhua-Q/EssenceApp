@@ -6,12 +6,16 @@ import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistReposit
 class GetForUpdateUseCase(
     private val playlistRepository: PlaylistRepository
 ) {
-    suspend operator fun invoke(id: Long): Result<Playlist>{
-        val response = playlistRepository.getForUpdate(id)
-        return if (response != null) {
-            Result.success(response)
-        } else {
-            Result.failure(Exception("Error al obtener datos de playlist para editar"))
+    suspend operator fun invoke(id: Long): Result<Playlist> {
+        return try {
+            val response = playlistRepository.getForUpdate(id)
+            if (response != null) {
+                Result.success(response)
+            } else {
+                Result.failure(Exception("Error al obtener datos de playlist para editar"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

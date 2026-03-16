@@ -11,8 +11,9 @@ interface AlbumApiService {
     companion object {
         const val BASE = "album"
     }
-    @GET("$BASE/{albumId}")
-    suspend fun getAlbum(@Path("albumId") albumId: Long): AlbumResponseApiDTO?
+
+    @GET("$BASE/{albumLookup}")
+    suspend fun getAlbum(@Path("albumLookup") albumLookup: String): AlbumResponseApiDTO?
 
     @POST("$BASE/{albumId}/like")
     suspend fun addLikeAlbum(@Path("albumId") albumId: Long)

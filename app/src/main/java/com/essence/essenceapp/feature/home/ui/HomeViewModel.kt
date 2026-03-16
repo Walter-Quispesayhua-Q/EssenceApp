@@ -1,5 +1,6 @@
 package com.essence.essenceapp.feature.home.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.essence.essenceapp.core.network.storage.TokenManager
@@ -8,7 +9,6 @@ import com.essence.essenceapp.feature.home.domain.repository.HomeRepository
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,43 +30,41 @@ class HomeViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
+            Log.e("HOME_DEBUG", "loadData START")
             _uiState.value = HomeUiState.Loading
 
-            try {
-                val homeDeferred = async { homeRepository.getHome() }
-                val recentSongsDeferred = async {
-                    val userId = tokenManager.getUserId()
-                    if (userId == null) {
-                        emptyList()
+            val recentSongs = emptyList<com.essence.essenceapp.feature.song.domain.model.SongSimple>()
+            Log.e("HOME_DEBUG", "history SKIPPED")
+
+            val homeResult = runCatching {
+                Log.e("HOME_DEBUG", "before homeRepository.getHome()")
+                homeRepository.getHome()
+            }
+
+            homeResult
+                .onSuccess { data ->
+                    Log.e(
+                        "HOME_DEBUG",
+                        "home success dataNull=${data == null} songs=${data?.songs?.size} albums=${data?.albums?.size} artists=${data?.artists?.size}"
+                    )
+
+                    if (data != null) {
+                        _uiState.value = HomeUiState.Success(
+                            homeData = data,
+                            recentSongs = recentSongs
+                        )
                     } else {
-                        try {
-                            getSongsOfHistoryUseCase()
-                                .getOrDefault(emptyList())
-                                .take(10)
-                        } catch (_: Exception) {
-                            emptyList()
-                        }
+                        _uiState.value = HomeUiState.Error(
+                            message = "No se encontraron datos"
+                        )
                     }
                 }
-
-                val data = homeDeferred.await()
-                val recentSongs = recentSongsDeferred.await()
-
-                if (data != null) {
-                    _uiState.value = HomeUiState.Success(
-                        homeData = data,
-                        recentSongs = recentSongs
-                    )
-                } else {
+                .onFailure { error ->
+                    Log.e("HOME_DEBUG", "home failure=${error.message}", error)
                     _uiState.value = HomeUiState.Error(
-                        message = "No se encontraron datos"
+                        message = error.toUserMessage()
                     )
                 }
-            } catch (e: Exception) {
-                _uiState.value = HomeUiState.Error(
-                    message = e.toUserMessage()
-                )
-            }
         }
     }
 

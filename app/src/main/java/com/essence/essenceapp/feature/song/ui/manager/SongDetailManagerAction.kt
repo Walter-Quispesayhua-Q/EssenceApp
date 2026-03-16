@@ -8,4 +8,5 @@ sealed interface SongDetailManagerAction {
     data object Previous : SongDetailManagerAction
     data class SeekTo(val positionMs: Long) : SongDetailManagerAction
     data class SeekBy(val deltaMs: Long) : SongDetailManagerAction
+    data object ToggleRepeat : SongDetailManagerAction
 }

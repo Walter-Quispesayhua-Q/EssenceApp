@@ -9,10 +9,12 @@ import com.essence.essenceapp.feature.auth.register.domain.repository.RegisterRe
 
 class RegisterRepositoryImpl(
     private val apiService: RegisterApiService
-): RegisterRepository {
+) : RegisterRepository {
 
     override suspend fun getAvailableUsername(query: String): Boolean {
-        return apiService.getAvailableUsername(query)
+        val response = apiService.getAvailableUsername(query)
+        return response?.data
+            ?: throw IllegalStateException("Respuesta invalida al verificar username")
     }
 
     override suspend fun createUser(registerRequest: RegisterRequest): Register? {
@@ -20,6 +22,4 @@ class RegisterRepositoryImpl(
         val response = apiService.createUser(request)
         return response?.data?.registerToDomain()
     }
-
-
 }

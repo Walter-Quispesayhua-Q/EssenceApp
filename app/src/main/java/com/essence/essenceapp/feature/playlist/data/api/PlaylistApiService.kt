@@ -18,12 +18,16 @@ interface PlaylistApiService {
         const val BASE = "playlist"
     }
 
-    //crud
     @POST(BASE)
-    suspend fun createPlaylist(@Body playlistRequestApiDto: PlaylistRequestApiDTO): ApiResponseDto<PlaylistResponseSimpleApiDTO>?
+    suspend fun createPlaylist(
+        @Body playlistRequestApiDto: PlaylistRequestApiDTO
+    ): ApiResponseDto<PlaylistResponseSimpleApiDTO>?
 
     @PUT("$BASE/{id}")
-    suspend fun updatePlaylist(@Path("id") id: Long, @Body playlistRequestApiDTO: PlaylistRequestApiDTO): ApiResponseDto<PlaylistResponseSimpleApiDTO>?
+    suspend fun updatePlaylist(
+        @Path("id") id: Long,
+        @Body playlistRequestApiDTO: PlaylistRequestApiDTO
+    ): ApiResponseDto<PlaylistResponseSimpleApiDTO>?
 
     @GET("$BASE/{id}")
     suspend fun getPlaylist(@Path("id") id: Long): PlaylistResponseApiDTO?
@@ -34,24 +38,23 @@ interface PlaylistApiService {
     @DELETE("$BASE/{id}")
     suspend fun deletePlaylist(@Path("id") id: Long)
 
-    // manager content
-
     @GET("$BASE/{id}/songs")
     suspend fun getListSongs(@Path("id") id: Long): List<SongResponseSimpleApiDTO>?
 
     @POST("$BASE/{id}/songs/{songId}")
     suspend fun addSongToPlaylist(
-        @Path("id") id: Long, @Path("songId") songId: Long
+        @Path("id") id: Long,
+        @Path("songId") songId: Long
     ): Boolean
 
     @DELETE("$BASE/{id}/songs/{songId}")
     suspend fun deleteSongOfPlaylist(
-        @Path("id") id: Long, @Path("songId") songId: Long
+        @Path("id") id: Long,
+        @Path("songId") songId: Long
     )
 
-    //lists
-    @GET("$BASE/lists/{id}")
-    suspend fun getPlaylistsByUser(@Path("id") userId: Long): PlaylistsSimplesResponseApiDTO?
+    @GET(BASE)
+    suspend fun getPlaylistsByUser(): PlaylistsSimplesResponseApiDTO?
 
     @POST("$BASE/{id}/like")
     suspend fun addLikePlaylist(@Path("id") id: Long)

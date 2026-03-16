@@ -12,8 +12,8 @@ interface SongApiService {
         const val BASE = "song"
     }
 
-    @GET("$BASE/{songId}")
-    suspend fun getSong(@Path("songId") songId: Long): SongResponseApiDTO?
+    @GET("$BASE/{songLookup}")
+    suspend fun getSong(@Path("songLookup") songLookup: String): SongResponseApiDTO?
 
     @POST("$BASE/{songId}/like")
     suspend fun addLikeSong(@Path("songId") songId: Long)

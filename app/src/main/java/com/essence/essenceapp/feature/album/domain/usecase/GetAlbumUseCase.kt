@@ -3,9 +3,11 @@ package com.essence.essenceapp.feature.album.domain.usecase
 import com.essence.essenceapp.feature.album.domain.model.Album
 import com.essence.essenceapp.feature.album.domain.repository.AlbumRepository
 
-class GetAlbumUseCase(private val albumRepository: AlbumRepository) {
-    suspend operator fun invoke(albumId: Long): Result<Album> {
-        val response = albumRepository.getAlbum(albumId)
+class GetAlbumUseCase(
+    private val albumRepository: AlbumRepository
+) {
+    suspend operator fun invoke(albumLookup: String): Result<Album> {
+        val response = albumRepository.getAlbum(albumLookup)
         return if (response != null) {
             Result.success(response)
         } else {

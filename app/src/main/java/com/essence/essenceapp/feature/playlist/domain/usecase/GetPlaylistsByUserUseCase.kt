@@ -6,8 +6,8 @@ import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistReposit
 class GetPlaylistsByUserUseCase(
     private val playlistRepository: PlaylistRepository
 ) {
-    suspend operator fun invoke(userId: Long): Result<PlaylistsSimples> {
-        val response = playlistRepository.getPlaylistsByUser(userId)
+    suspend operator fun invoke(): Result<PlaylistsSimples> {
+        val response = playlistRepository.getPlaylistsByUser()
         return if (response != null) {
             Result.success(response)
         } else {

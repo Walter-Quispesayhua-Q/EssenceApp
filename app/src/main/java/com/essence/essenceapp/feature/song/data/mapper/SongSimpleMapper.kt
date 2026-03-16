@@ -5,7 +5,7 @@ import com.essence.essenceapp.feature.song.domain.model.SongSimple
 
 fun SongResponseSimpleApiDTO.songToSimpleDomain(): SongSimple? {
     return SongSimple(
-        id = this.id ?: return null,
+        id = this.id,
         title = this.title ?: return null,
         durationMs = this.durationMs ?: return null,
         hlsMasterKey = this.hlsMasterKey ?: return null,

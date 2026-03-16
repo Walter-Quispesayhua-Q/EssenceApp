@@ -67,8 +67,8 @@ class PlaylistRepositoryImpl(
 
     //lists
 
-    override suspend fun getPlaylistsByUser(userId: Long): PlaylistsSimples? {
-        val response = apiService.getPlaylistsByUser(userId)
+    override suspend fun getPlaylistsByUser(): PlaylistsSimples? {
+        val response = apiService.getPlaylistsByUser()
         return response?.playlistsSimplesToDomain()
     }
 
