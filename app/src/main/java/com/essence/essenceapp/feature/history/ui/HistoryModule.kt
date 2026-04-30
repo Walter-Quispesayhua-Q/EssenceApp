@@ -3,7 +3,9 @@ package com.essence.essenceapp.feature.history.ui
 import com.essence.essenceapp.feature.history.data.api.HistoryApiService
 import com.essence.essenceapp.feature.history.data.repository.HistoryRepositoryImpl
 import com.essence.essenceapp.feature.history.domain.repository.HistoryRepository
+import com.essence.essenceapp.feature.history.domain.usecase.AddSongHistoryUseCase
 import com.essence.essenceapp.feature.history.domain.usecase.GetSongsOfHistoryUseCase
+import com.essence.essenceapp.shared.cache.QueueCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,8 +25,8 @@ object HistoryModule {
 
     @Provides
     @Singleton
-    fun provideHistoryRepository(apiService: HistoryApiService): HistoryRepository {
-        return HistoryRepositoryImpl(apiService)
+    fun provideHistoryRepository(apiService: HistoryApiService, queueCache: QueueCache): HistoryRepository {
+        return HistoryRepositoryImpl(apiService, queueCache)
     }
 
     @Provides
@@ -33,4 +35,11 @@ object HistoryModule {
     ): GetSongsOfHistoryUseCase {
         return GetSongsOfHistoryUseCase(historyRepository)
     }
-}
+
+    @Provides
+    fun provideAddSongHistoryUseCase(
+        historyRepository: HistoryRepository
+    ): AddSongHistoryUseCase {
+        return AddSongHistoryUseCase(historyRepository)
+    }
+}

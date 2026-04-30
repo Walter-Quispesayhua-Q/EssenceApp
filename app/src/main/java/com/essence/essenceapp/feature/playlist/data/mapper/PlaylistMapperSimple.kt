@@ -8,6 +8,7 @@ fun PlaylistResponseSimpleApiDTO.playlistToSimpleDomain(): PlaylistSimple? {
         id = this.id ?: return null,
         title = this.title ?: return null,
         isPublic = this.isPublic ?: return null,
+        type = this.type ?: "NORMAL",
         totalLikes = this.totalLikes
     )
 }

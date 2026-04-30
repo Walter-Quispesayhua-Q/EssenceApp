@@ -19,5 +19,7 @@ fun SongResponseApiDTO.songToDomain(): Song? {
         album = this.album?.albumToSimpleDomain(),
         releaseDate = this.releaseDate,
         isLiked = this.isLiked ?: false,
+        streamingUrl = this.streamingUrl,
+        streamingUrlExpiresAt = this.streamingUrlExpiresAt
     )
 }

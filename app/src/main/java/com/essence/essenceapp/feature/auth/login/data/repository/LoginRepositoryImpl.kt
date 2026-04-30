@@ -10,8 +10,12 @@ import com.essence.essenceapp.feature.auth.login.domain.repository.LoginReposito
 class LoginRepositoryImpl(private val apiService: LoginApiService): LoginRepository {
 
     override suspend fun login(login: Login): Token? {
-        val request = login.loginToDto()
-        val response = apiService.login(request)
-        return response.data?.tokenToDomain()
+        return try {
+            val request = login.loginToDto()
+            val response = apiService.login(request)
+            response.data?.tokenToDomain()
+        } catch (e: Exception) {
+            null
+        }
     }
 }

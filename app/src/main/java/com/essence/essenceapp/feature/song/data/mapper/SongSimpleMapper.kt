@@ -8,11 +8,11 @@ fun SongResponseSimpleApiDTO.songToSimpleDomain(): SongSimple? {
         id = this.id,
         title = this.title ?: return null,
         durationMs = this.durationMs ?: return null,
-        hlsMasterKey = this.hlsMasterKey ?: return null,
+        hlsMasterKey = this.hlsMasterKey?.takeIf { it.isNotBlank() } ?: return null,
         imageKey = this.imageKey,
         songType = this.songType,
         totalPlays = this.totalPlays,
-        artistName = this.artistName ?: return null,
+        artistName = this.artistName?.takeIf { it.isNotBlank() } ?: "Artista desconocido",
         albumName = this.albumName,
         releaseDate = this.releaseDate
     )

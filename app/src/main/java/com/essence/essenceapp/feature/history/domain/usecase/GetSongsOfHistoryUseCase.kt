@@ -6,8 +6,8 @@ import com.essence.essenceapp.feature.song.domain.model.SongSimple
 class GetSongsOfHistoryUseCase(
     private val historyRepository: HistoryRepository
 ) {
-    suspend operator fun invoke(): Result<List<SongSimple>> {
-        val response = historyRepository.getSongsOfHistory()
+    suspend operator fun invoke(limit: Int? = null): Result<List<SongSimple>> {
+        val response = historyRepository.getSongsOfHistory(limit)
         return if (response != null) {
             Result.success(response)
         } else {

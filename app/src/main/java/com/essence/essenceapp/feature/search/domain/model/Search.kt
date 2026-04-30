@@ -8,5 +8,6 @@ import com.essence.essenceapp.feature.song.domain.model.SongSimple
 data class Search(
     val songs: List<SongSimple>?,
     val albums: List<AlbumSimple>?,
-    val artists: List<ArtistSimple>?
+    val artists: List<ArtistSimple>?,
+    val hasNextPage: Boolean = false
 )

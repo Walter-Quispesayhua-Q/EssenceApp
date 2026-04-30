@@ -19,7 +19,11 @@ fun NavGraphBuilder.songGraph(
         route = SongRoutes.SONG_DETAIL,
         arguments = listOf(
             navArgument(SongRoutes.SONG_LOOKUP) { type = NavType.StringType }
-        )
+        ),
+        enterTransition = { songDetailEnter() },
+        exitTransition = { songDetailExit() },
+        popEnterTransition = { songDetailPopEnter() },
+        popExitTransition = { songDetailPopExit() }
     ) { backStackEntry ->
         val songLookup = backStackEntry.arguments?.getString(SongRoutes.SONG_LOOKUP)
         if (songLookup.isNullOrBlank()) {

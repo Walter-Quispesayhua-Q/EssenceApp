@@ -5,4 +5,5 @@ sealed interface SearchAction {
     data class TypeChanged(val value: String): SearchAction
     data object Submit : SearchAction
     data object ClearError: SearchAction
+    data object LoadNextPage : SearchAction
 }

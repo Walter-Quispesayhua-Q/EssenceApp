@@ -7,3 +7,9 @@ interface RegisterRepository {
     suspend fun getAvailableUsername(query: String): Boolean
     suspend fun createUser(registerRequest: RegisterRequest): Register?
 }
+
+class RegisterEmailAlreadyUsedException :
+    Exception("Este correo ya está registrado.")
+
+class RegisterSubmissionException(message: String) :
+    Exception(message)

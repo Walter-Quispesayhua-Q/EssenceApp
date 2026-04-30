@@ -11,6 +11,8 @@ data class Playlist(
     val totalSongs: Int,
     val createdAt: LocalDate,
     val updatedAt: LocalDate?,
+    val type: String = "NORMAL",
     val totalLikes: Long? = null,
-    val isLiked: Boolean = false
+    val isLiked: Boolean = false,
+    val isOwner: Boolean = false
 )

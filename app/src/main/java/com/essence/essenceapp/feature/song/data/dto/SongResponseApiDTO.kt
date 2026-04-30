@@ -4,6 +4,7 @@ import com.essence.essenceapp.feature.album.data.dto.AlbumResponseSimpleApiDTO
 import com.essence.essenceapp.feature.artist.data.dto.ArtistResponseSimpleApiDTO
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
+import java.time.Instant
 
 @Serializable
 data class SongResponseApiDTO(
@@ -17,5 +18,7 @@ data class SongResponseApiDTO(
     val artists: List<ArtistResponseSimpleApiDTO>?,
     val album: AlbumResponseSimpleApiDTO?,
     val releaseDate: LocalDate?,
-    val isLiked: Boolean?
+    val isLiked: Boolean?,
+    val streamingUrl: String?,
+    val streamingUrlExpiresAt: Instant?
 )

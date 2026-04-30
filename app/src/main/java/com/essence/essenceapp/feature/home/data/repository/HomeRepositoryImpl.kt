@@ -1,29 +1,49 @@
 package com.essence.essenceapp.feature.home.data.repository
 
-import android.util.Log
+import com.essence.essenceapp.core.network.auth.SessionManager
 import com.essence.essenceapp.feature.home.data.api.HomeApiService
 import com.essence.essenceapp.feature.home.data.mapper.homeToDomain
 import com.essence.essenceapp.feature.home.domain.model.Home
 import com.essence.essenceapp.feature.home.domain.repository.HomeRepository
+import com.essence.essenceapp.shared.cache.QueueCache
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class HomeRepositoryImpl(
-    private val apiService: HomeApiService
-): HomeRepository {
+@Singleton
+class HomeRepositoryImpl @Inject constructor(
+    private val apiService: HomeApiService,
+    private val queueCache: QueueCache,
+    sessionManager: SessionManager
+) : HomeRepository {
 
-    override suspend fun getHome(): Home? {
-        val apiDTO = apiService.getHome()
-        Log.e(
-            "HOME_DEBUG",
-            "api songs=${apiDTO?.songs?.size} albums=${apiDTO?.albums?.size} artists=${apiDTO?.artists?.size} status=${apiDTO?.status}"
-        )
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val homeMemoryCache = MutableStateFlow<Home?>(null)
 
-        val mapped = apiDTO?.homeToDomain()
+    init {
+        scope.launch {
+            sessionManager.sessionExpiredEvents.collect {
+                clearMemory()
+            }
+        }
+    }
 
-        Log.e(
-            "HOME_DEBUG",
-            "mapped songs=${mapped?.songs?.size} albums=${mapped?.albums?.size} artists=${mapped?.artists?.size}"
-        )
+    override fun observeHome(): StateFlow<Home?> = homeMemoryCache.asStateFlow()
 
-        return mapped
+    override suspend fun refreshHome(): Result<Home?> = runCatching {
+        val mapped = apiService.getHome()?.homeToDomain()
+        mapped?.songs?.let { queueCache.set("home", it) }
+        homeMemoryCache.value = mapped
+        mapped
+    }
+
+    override fun clearMemory() {
+        homeMemoryCache.value = null
     }
 }

@@ -1,6 +1,7 @@
 package com.essence.essenceapp.feature.history.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,11 +26,13 @@ import androidx.compose.ui.unit.dp
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import com.essence.essenceapp.ui.theme.MidnightBlack
 import com.essence.essenceapp.ui.theme.MutedTeal
+import com.essence.essenceapp.ui.theme.PureWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryTopBar(
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    subtitle: String? = null
 ) {
     Column {
         Surface(
@@ -39,11 +42,22 @@ fun HistoryTopBar(
         ) {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Historial",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Historial",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite
+                        )
+                        if (subtitle != null) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MutedTeal.copy(alpha = 0.85f)
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     if (onBack != null) {
@@ -66,12 +80,13 @@ fun HistoryTopBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(0.5.dp)
+                .height(1.dp)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            MutedTeal.copy(alpha = 0.25f),
+                            MutedTeal.copy(alpha = 0.35f),
+                            MutedTeal.copy(alpha = 0.18f),
                             Color.Transparent
                         )
                     )
@@ -84,7 +99,7 @@ fun HistoryTopBar(
 @Composable
 private fun HistoryTopBarPreview() {
     EssenceAppTheme {
-        HistoryTopBar(onBack = {})
+        HistoryTopBar(onBack = {}, subtitle = "12 canciones")
     }
 }
 

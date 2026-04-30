@@ -16,13 +16,8 @@ class SearchRepositoryImpl(
         return response?.mapNotNull { it.categoryToDomain() }
     }
 
-    override suspend fun search(
-        query: String,
-        type: String?
-    ): Search? {
-        val response = apiService.search(query, type)
+    override suspend fun search(query: String, type: String?, page: Int): Search? {
+        val response = apiService.search(query, type, page)
         return response?.searchToDomain()
     }
-
-
 }

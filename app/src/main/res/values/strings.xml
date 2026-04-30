@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">EssenceApp</string>
+    <string name="app_name">Essence</string>
+    <string name="media_notification_channel_name">Reproducción en curso</string>
 </resources>

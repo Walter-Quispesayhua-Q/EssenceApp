@@ -8,7 +8,6 @@ class RegisterUseCase(
     private val registerRepository: RegisterRepository
 ) {
     suspend operator fun invoke(registerRequest: RegisterRequest): Result<Register> {
-
         if (registerRequest.username.isBlank()) {
             return Result.failure(Exception("El usuario es requerido"))
         }
@@ -19,13 +18,17 @@ class RegisterUseCase(
             return Result.failure(Exception("La contraseña es requerida"))
         }
 
-        val response = registerRepository.createUser(registerRequest)
-        return if (response != null) {
-            Result.success(response)
-        } else {
-            Result.failure(
-                Exception("Error al registrar")
-            )
+        return try {
+            val response = registerRepository.createUser(registerRequest)
+            if (response != null) {
+                Result.success(response)
+            } else {
+                Result.failure(
+                    Exception("No se pudo completar el registro.")
+                )
+            }
+        } catch (error: Exception) {
+            Result.failure(error)
         }
     }
 }

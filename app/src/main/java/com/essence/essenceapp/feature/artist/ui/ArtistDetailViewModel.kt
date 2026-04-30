@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.essence.essenceapp.feature.artist.domain.usecase.AddLikeArtistUseCase
 import com.essence.essenceapp.feature.artist.domain.usecase.DeleteLikeArtistUseCase
 import com.essence.essenceapp.feature.artist.domain.usecase.GetArtistUseCase
+import com.essence.essenceapp.shared.cache.ArtistDetailCache
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
 class ArtistDetailViewModel @Inject constructor(
     private val getArtistUseCase: GetArtistUseCase,
     private val addLikeArtistUseCase: AddLikeArtistUseCase,
-    private val deleteLikeArtistUseCase: DeleteLikeArtistUseCase
+    private val deleteLikeArtistUseCase: DeleteLikeArtistUseCase,
+    private val artistDetailCache: ArtistDetailCache
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArtistDetailUiState>(ArtistDetailUiState.Loading)
@@ -27,11 +29,27 @@ class ArtistDetailViewModel @Inject constructor(
 
     fun loadArtist(lookup: String) {
         currentArtistLookup = lookup
+
+        val cached = artistDetailCache.get(lookup)
+        if (cached != null) {
+            _uiState.value = ArtistDetailUiState.Success(
+                artist = cached,
+                isLikeSubmitting = false
+            )
+            return
+        }
+
+        fetchArtist(lookup)
+    }
+
+    private fun fetchArtist(lookup: String) {
         viewModelScope.launch {
             _uiState.value = ArtistDetailUiState.Loading
             try {
                 val result = getArtistUseCase(lookup)
+                if (lookup != currentArtistLookup) return@launch
                 result.onSuccess { artist ->
+                    artistDetailCache.put(lookup, artist)
                     _uiState.value = ArtistDetailUiState.Success(
                         artist = artist,
                         isLikeSubmitting = false
@@ -41,14 +59,19 @@ class ArtistDetailViewModel @Inject constructor(
                     _uiState.value = ArtistDetailUiState.Error(error.toUserMessage())
                 }
             } catch (e: Exception) {
-                _uiState.value = ArtistDetailUiState.Error(e.toUserMessage())
+                if (lookup == currentArtistLookup) {
+                    _uiState.value = ArtistDetailUiState.Error(e.toUserMessage())
+                }
             }
         }
     }
 
     fun onAction(action: ArtistDetailAction) {
         when (action) {
-            ArtistDetailAction.Refresh -> currentArtistLookup?.let(::loadArtist)
+            ArtistDetailAction.Refresh -> currentArtistLookup?.let { lookup ->
+                artistDetailCache.invalidate(lookup)
+                fetchArtist(lookup)
+            }
             ArtistDetailAction.Back -> Unit
             is ArtistDetailAction.OpenSong -> Unit
             is ArtistDetailAction.OpenAlbum -> Unit
@@ -75,8 +98,10 @@ class ArtistDetailViewModel @Inject constructor(
 
             result.onSuccess {
                 val latest = _uiState.value as? ArtistDetailUiState.Success ?: return@onSuccess
+                val updatedArtist = latest.artist.copy(isLiked = !current.artist.isLiked)
+                currentArtistLookup?.let { artistDetailCache.put(it, updatedArtist) }
                 _uiState.value = latest.copy(
-                    artist = latest.artist.copy(isLiked = !current.artist.isLiked),
+                    artist = updatedArtist,
                     isLikeSubmitting = false
                 )
             }

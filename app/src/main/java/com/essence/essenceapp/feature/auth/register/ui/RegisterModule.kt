@@ -5,6 +5,7 @@ import com.essence.essenceapp.feature.auth.register.data.repository.RegisterRepo
 import com.essence.essenceapp.feature.auth.register.domain.repository.RegisterRepository
 import com.essence.essenceapp.feature.auth.register.domain.usecase.RegisterUseCase
 import com.essence.essenceapp.feature.auth.register.domain.usecase.UsernameAvailableUseCase
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,8 +24,11 @@ object RegisterModule {
     }
     @Provides
     @Singleton
-    fun provideRegisterRepository(apiService: RegisterApiService): RegisterRepository {
-        return RegisterRepositoryImpl(apiService)
+    fun provideRegisterRepository(
+        apiService: RegisterApiService,
+        gson: Gson
+    ): RegisterRepository {
+        return RegisterRepositoryImpl(apiService, gson)
     }
     @Provides
     fun provideRegisterUseCase(registerRepository: RegisterRepository): RegisterUseCase {

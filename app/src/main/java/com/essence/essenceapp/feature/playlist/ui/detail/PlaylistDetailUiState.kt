@@ -7,6 +7,8 @@ sealed interface PlaylistDetailUiState {
 
     data object Loading: PlaylistDetailUiState
 
+    data object Deleted: PlaylistDetailUiState
+
     data class Error(
         val message: String
     ): PlaylistDetailUiState
@@ -15,6 +17,9 @@ sealed interface PlaylistDetailUiState {
         val playlist: Playlist,
         val songs: List<SongSimple> = emptyList(),
         val isSongsLoading: Boolean = true,
-        val isLikeSubmitting: Boolean = false
+        val isRefreshing: Boolean = false,
+        val isLikeSubmitting: Boolean = false,
+        val isDeleting: Boolean = false,
+        val deleteError: String? = null
     ): PlaylistDetailUiState
 }

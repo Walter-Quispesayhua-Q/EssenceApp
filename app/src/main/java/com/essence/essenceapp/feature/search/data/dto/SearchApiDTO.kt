@@ -9,5 +9,6 @@ import kotlinx.serialization.Serializable
 data class SearchApiDTO(
     val songs: List<SongResponseSimpleApiDTO>?,
     val albums: List<AlbumResponseSimpleApiDTO>?,
-    val artists: List<ArtistResponseSimpleApiDTO>?
+    val artists: List<ArtistResponseSimpleApiDTO>?,
+    val hasNextPage: Boolean = false
 )

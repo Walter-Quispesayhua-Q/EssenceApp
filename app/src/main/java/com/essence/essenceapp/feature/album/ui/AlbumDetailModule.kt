@@ -6,6 +6,7 @@ import com.essence.essenceapp.feature.album.domain.repository.AlbumRepository
 import com.essence.essenceapp.feature.album.domain.usecase.AddLikeAlbumUseCase
 import com.essence.essenceapp.feature.album.domain.usecase.DeleteLikeAlbumUseCase
 import com.essence.essenceapp.feature.album.domain.usecase.GetAlbumUseCase
+import com.essence.essenceapp.shared.cache.QueueCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,8 +25,8 @@ object AlbumDetailModule {
 
     @Provides
     @Singleton
-    fun provideAlbumRepository(apiService: AlbumApiService): AlbumRepository =
-        AlbumRepositoryImpl(apiService)
+    fun provideAlbumRepository(apiService: AlbumApiService, queueCache: QueueCache): AlbumRepository =
+        AlbumRepositoryImpl(apiService, queueCache)
 
     @Provides
     fun provideGetAlbumUseCase(repo: AlbumRepository): GetAlbumUseCase =

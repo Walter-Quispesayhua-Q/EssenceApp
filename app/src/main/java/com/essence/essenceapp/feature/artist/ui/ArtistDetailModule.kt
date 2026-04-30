@@ -6,6 +6,7 @@ import com.essence.essenceapp.feature.artist.domain.repository.ArtistRepository
 import com.essence.essenceapp.feature.artist.domain.usecase.AddLikeArtistUseCase
 import com.essence.essenceapp.feature.artist.domain.usecase.DeleteLikeArtistUseCase
 import com.essence.essenceapp.feature.artist.domain.usecase.GetArtistUseCase
+import com.essence.essenceapp.shared.cache.QueueCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,8 +25,8 @@ object ArtistDetailModule {
 
     @Provides
     @Singleton
-    fun provideArtistRepository(apiService: ArtistApiService): ArtistRepository =
-        ArtistRepositoryImpl(apiService)
+    fun provideArtistRepository(apiService: ArtistApiService, queueCache: QueueCache): ArtistRepository =
+        ArtistRepositoryImpl(apiService, queueCache)
 
     @Provides
     fun provideGetArtistUseCase(repo: ArtistRepository): GetArtistUseCase =

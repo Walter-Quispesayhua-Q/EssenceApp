@@ -1,5 +1,13 @@
 package com.essence.essenceapp.feature.profile.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,17 +17,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.essence.essenceapp.feature.profile.domain.model.UserProfile
@@ -40,6 +56,7 @@ import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import com.essence.essenceapp.ui.theme.GraphiteSurface
 import com.essence.essenceapp.ui.theme.LuxeGold
+import com.essence.essenceapp.ui.theme.MidnightBlack
 import com.essence.essenceapp.ui.theme.MutedTeal
 import com.essence.essenceapp.ui.theme.PureWhite
 import com.essence.essenceapp.ui.theme.SoftRose
@@ -49,7 +66,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val ScreenHorizontalPadding = 20.dp
-private val SectionGap = 18.dp
 private val IslandRadius = 28.dp
 
 private data class ProfileStatItem(
@@ -59,232 +75,440 @@ private data class ProfileStatItem(
     val caption: String
 )
 
+private data class HeroMetricItem(
+    val label: String,
+    val value: String,
+    val accent: Color
+)
+
 @Composable
 fun ProfileContent(
     modifier: Modifier = Modifier,
     state: ProfileUiState,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
-    when (state) {
-        ProfileUiState.Loading -> ProfileLoadingState(modifier = modifier)
-        is ProfileUiState.Error -> AppErrorState(
-            modifier = modifier,
-            title = "No se pudo cargar el perfil",
-            message = state.message,
-            onRetry = onRetry
-        )
-        is ProfileUiState.Success -> ProfileSuccessState(
-            modifier = modifier,
-            profile = state.profile
-        )
-    }
+    ProfileStateTransition(
+        modifier = modifier,
+        state = state,
+        onRetry = onRetry,
+        onBack = onBack
+    )
 }
 
 @Composable
-private fun ProfileLoadingState(
-    modifier: Modifier = Modifier
+private fun ProfileStateTransition(
+    modifier: Modifier,
+    state: ProfileUiState,
+    onRetry: () -> Unit,
+    onBack: (() -> Unit)?
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        GlassIsland(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ScreenHorizontalPadding),
-            accent = SoftRose
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                CircularProgressIndicator(
-                    color = SoftRose,
-                    strokeWidth = 2.5.dp
-                )
-                Text(
-                    text = "Cargando perfil...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
+    AnimatedContent(
+        targetState = state,
+        modifier = modifier,
+        label = "profile_state_transition",
+        contentKey = { it.transitionKey() },
+        transitionSpec = {
+            (
+                fadeIn(animationSpec = tween(360, easing = FastOutSlowInEasing)) +
+                    slideInVertically(
+                        animationSpec = tween(360, easing = FastOutSlowInEasing),
+                        initialOffsetY = { fullHeight -> fullHeight / 8 }
+                    )
+                ).togetherWith(
+                fadeOut(animationSpec = tween(220, easing = FastOutSlowInEasing)) +
+                    slideOutVertically(
+                        animationSpec = tween(220, easing = FastOutSlowInEasing),
+                        targetOffsetY = { fullHeight -> -fullHeight / 8 }
+                    )
+            )
+        }
+    ) { current ->
+        when (current) {
+            ProfileUiState.Loading -> ProfileLoadingSkeleton(
+                modifier = Modifier.fillMaxSize()
+            )
+
+            is ProfileUiState.Error -> AppErrorState(
+                modifier = Modifier.fillMaxSize(),
+                title = "No se pudo cargar el perfil",
+                message = current.message,
+                onRetry = onRetry
+            )
+
+            is ProfileUiState.Success -> ProfileSuccessState(
+                modifier = Modifier.fillMaxSize(),
+                profile = current.profile,
+                onBack = onBack
+            )
         }
     }
+}
+
+private fun ProfileUiState.transitionKey(): Int = when (this) {
+    ProfileUiState.Loading -> 0
+    is ProfileUiState.Error -> 1
+    is ProfileUiState.Success -> 2
 }
 
 @Composable
 private fun ProfileSuccessState(
     modifier: Modifier = Modifier,
-    profile: UserProfile
+    profile: UserProfile,
+    onBack: (() -> Unit)? = null
 ) {
     val bottomClearance = LocalBottomBarClearance.current
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = ScreenHorizontalPadding,
-            end = ScreenHorizontalPadding,
-            top = 14.dp,
-            bottom = bottomClearance + 20.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(SectionGap)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MidnightBlack)
     ) {
-        item {
-            HeroProfileIsland(profile = profile)
-        }
-
-        item {
-            ProfileSummaryIsland(profile = profile)
-        }
-
-        item {
-            SectionHeader(
-                title = "Tu biblioteca",
-                subtitle = "Favoritos, playlists y actividad"
-            )
-        }
-
-        item {
-            StatsMatrix(profile = profile)
-        }
-
-        item {
-            AccountDetailsIsland(profile = profile)
-        }
-    }
-}
-
-@Composable
-private fun HeroProfileIsland(
-    profile: UserProfile
-) {
-    GlassIsland(
-        accent = SoftRose,
-        contentPadding = PaddingValues(22.dp)
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = bottomClearance + 24.dp)
         ) {
-            Text(
-                text = "Cuenta personal",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = SoftRose
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ProfileMonogram(name = profile.username)
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = profile.username,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = profile.email,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                    )
-
-                    Text(
-                        text = "Miembro desde ${formatInstant(profile.createdAt)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
-                    )
-                }
+            item {
+                ProfileHeroSection(
+                    profile = profile,
+                    onBack = onBack
+                )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                MetricPill(
-                    label = "Playlists",
-                    value = profile.totalPlaylists.toString(),
-                    accent = MutedTeal
-                )
+            item {
+                Spacer(modifier = Modifier.height(18.dp))
 
-                MetricPill(
-                    label = "Historial",
-                    value = profile.totalPlayHistory.toString(),
-                    accent = LuxeGold
+                ProfileSummaryIsland(
+                    profile = profile,
+                    modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)
                 )
+            }
 
-                profile.updatedAt?.let {
-                    MetricPill(
-                        label = "Actualizado",
-                        value = formatShortDate(it),
-                        accent = SoftRose
-                    )
-                }
+            item {
+                Spacer(modifier = Modifier.height(22.dp))
+
+                SectionHeader(
+                    modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+                    title = "Coleccion y actividad",
+                    subtitle = "Una vista rapida de tu musica guardada y tu movimiento reciente."
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                StatsMatrix(
+                    profile = profile,
+                    modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(22.dp))
+
+                AccountDetailsIsland(
+                    profile = profile,
+                    modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ProfileMonogram(
-    name: String
+private fun ProfileHeroSection(
+    profile: UserProfile,
+    onBack: (() -> Unit)? = null
 ) {
+    val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
     Box(
         modifier = Modifier
-            .size(76.dp)
-            .clip(CircleShape)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        SoftRose.copy(alpha = 0.92f),
-                        MutedTeal.copy(alpha = 0.88f)
+            .fillMaxWidth()
+            .background(MidnightBlack)
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MutedTeal.copy(alpha = 0.20f),
+                            SoftRose.copy(alpha = 0.14f),
+                            MidnightBlack.copy(alpha = 0.96f)
+                        )
                     )
                 )
-            ),
-        contentAlignment = Alignment.Center
+        )
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            SoftRose.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        radius = 1100f
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = statusBarTopPadding + 12.dp,
+                    bottom = 18.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            if (onBack != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    FloatingCircleButton(
+                        onClick = onBack,
+                        contentDescription = "Volver"
+                    )
+                }
+            }
+
+            ProfileToneBadge()
+
+            ProfileAvatarOrb(name = profile.username)
+
+            HeroInfoIsland(profile = profile)
+        }
+    }
+}
+
+@Composable
+private fun FloatingCircleButton(
+    onClick: () -> Unit,
+    contentDescription: String
+) {
+    Surface(
+        shape = CircleShape,
+        color = GraphiteSurface.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.08f))
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = contentDescription,
+                tint = PureWhite.copy(alpha = 0.88f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileToneBadge() {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = SoftRose.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, SoftRose.copy(alpha = 0.22f))
     ) {
         Text(
-            text = initialsFrom(name),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = PureWhite
+            text = "Cuenta personal",
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = SoftRose
         )
     }
 }
 
 @Composable
-private fun MetricPill(
-    label: String,
-    value: String,
-    accent: Color
+private fun ProfileAvatarOrb(
+    name: String
 ) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = accent.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
+    Box(
+        modifier = Modifier.size(154.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            SoftRose.copy(alpha = 0.20f),
+                            MutedTeal.copy(alpha = 0.12f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        Surface(
+            modifier = Modifier.size(132.dp),
+            shape = CircleShape,
+            color = GraphiteSurface.copy(alpha = 0.82f),
+            border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.06f)),
+            shadowElevation = 16.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(112.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    SoftRose.copy(alpha = 0.95f),
+                                    MutedTeal.copy(alpha = 0.88f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initialsFrom(name),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = PureWhite
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroInfoIsland(
+    profile: UserProfile
+) {
+    GlassIsland(
+        modifier = Modifier.fillMaxWidth(),
+        accent = SoftRose,
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 20.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelLarge,
+                text = profile.username,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = accent
+                color = PureWhite,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = profile.email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = PureWhite.copy(alpha = 0.72f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = "Miembro desde ${formatInstant(profile.createdAt)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = PureWhite.copy(alpha = 0.48f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            HeroMetricsGrid(profile = profile)
+        }
+    }
+}
+
+@Composable
+private fun HeroMetricsGrid(
+    profile: UserProfile
+) {
+    val metrics = listOf(
+        HeroMetricItem(
+            label = "Playlists",
+            value = profile.totalPlaylists.toString(),
+            accent = MutedTeal
+        ),
+        HeroMetricItem(
+            label = "Historial",
+            value = formatCompactCount(profile.totalPlayHistory),
+            accent = LuxeGold
+        ),
+        HeroMetricItem(
+            label = "Favoritos",
+            value = formatCompactCount(totalFavorites(profile)),
+            accent = SoftRose
+        ),
+        HeroMetricItem(
+            label = if (profile.updatedAt != null) "Actualizado" else "Creado",
+            value = formatShortDate(profile.updatedAt ?: profile.createdAt),
+            accent = MutedTeal
+        )
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        metrics.chunked(2).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                row.forEach { item ->
+                    HeroMetricCard(
+                        modifier = Modifier.weight(1f),
+                        item = item
+                    )
+                }
+
+                if (row.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroMetricCard(
+    modifier: Modifier = Modifier,
+    item: HeroMetricItem
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = item.accent.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, item.accent.copy(alpha = 0.14f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = item.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = PureWhite.copy(alpha = 0.56f)
+            )
+
+            Text(
+                text = item.value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = item.accent
             )
         }
     }
@@ -292,29 +516,109 @@ private fun MetricPill(
 
 @Composable
 private fun ProfileSummaryIsland(
-    profile: UserProfile
+    profile: UserProfile,
+    modifier: Modifier = Modifier
 ) {
-    val totalFavorites = profile.totalLikedSongs + profile.totalLikedAlbums + profile.totalLikedArtists
-    val strongestArea = strongestArea(profile)
+    val strongestArea = titleCase(strongestArea(profile))
 
     GlassIsland(
+        modifier = modifier,
         accent = MutedTeal,
         contentPadding = PaddingValues(18.dp)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MutedTeal.copy(alpha = 0.10f),
+                border = BorderStroke(1.dp, MutedTeal.copy(alpha = 0.18f))
+            ) {
+                Text(
+                    text = "Panorama general",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MutedTeal
+                )
+            }
+
             Text(
-                text = "Resumen",
+                text = "Tu biblioteca mantiene buen movimiento",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = PureWhite
             )
 
             Text(
-                text = "Tienes $totalFavorites favoritos entre canciones, albumes y artistas. Tu senal mas fuerte hoy esta en $strongestArea.",
+                text = buildSummaryMessage(profile),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                color = PureWhite.copy(alpha = 0.64f)
+            )
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SummaryHighlightPill(
+                        modifier = Modifier.weight(1f),
+                        label = "Favoritos",
+                        value = formatCompactCount(totalFavorites(profile)),
+                        accent = SoftRose
+                    )
+
+                    SummaryHighlightPill(
+                        modifier = Modifier.weight(1f),
+                        label = "Area fuerte",
+                        value = strongestArea,
+                        accent = MutedTeal
+                    )
+                }
+
+                SummaryHighlightPill(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = "Actividad",
+                    value = "${formatCompactCount(profile.totalPlayHistory)} reproducciones registradas",
+                    accent = LuxeGold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryHighlightPill(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String,
+    accent: Color
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = accent.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.14f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = PureWhite.copy(alpha = 0.52f)
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = accent
             )
         }
     }
@@ -322,7 +626,8 @@ private fun ProfileSummaryIsland(
 
 @Composable
 private fun StatsMatrix(
-    profile: UserProfile
+    profile: UserProfile,
+    modifier: Modifier = Modifier
 ) {
     val stats = listOf(
         ProfileStatItem(
@@ -358,6 +663,7 @@ private fun StatsMatrix(
     )
 
     Column(
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         stats.chunked(2).forEach { row ->
@@ -387,67 +693,163 @@ private fun StatMetricCard(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(26.dp),
+        color = GraphiteSurface.copy(alpha = 0.62f),
         border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.05f))
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
             Box(
                 modifier = Modifier
-                    .width(42.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(item.accent)
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                PureWhite.copy(alpha = 0.03f),
+                                Color.Transparent
+                            )
+                        )
+                    )
             )
 
-            Text(
-                text = item.label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                item.accent.copy(alpha = 0.10f),
+                                Color.Transparent
+                            )
+                        )
+                    )
             )
 
-            Text(
-                text = item.value.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StatBadge(
+                        text = item.caption,
+                        accent = item.accent
+                    )
 
-            Text(
-                text = item.caption,
-                style = MaterialTheme.typography.bodySmall,
-                color = item.accent.copy(alpha = 0.85f)
-            )
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(item.accent)
+                    )
+                }
+
+                Text(
+                    text = formatCompactCount(item.value),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = PureWhite
+                )
+
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = PureWhite.copy(alpha = 0.68f)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    item.accent.copy(alpha = 0.90f),
+                                    item.accent.copy(alpha = 0.35f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            }
         }
     }
 }
 
 @Composable
+private fun StatBadge(
+    text: String,
+    accent: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = accent.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.16f))
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = accent
+        )
+    }
+}
+
+@Composable
 private fun AccountDetailsIsland(
-    profile: UserProfile
+    profile: UserProfile,
+    modifier: Modifier = Modifier
 ) {
     GlassIsland(
+        modifier = modifier,
         accent = LuxeGold,
         contentPadding = PaddingValues(18.dp)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             Text(
                 text = "Detalles de cuenta",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = PureWhite
             )
 
-            DetailRow(label = "Correo", value = profile.email)
-            DetailRow(label = "Creado", value = formatInstant(profile.createdAt))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            DetailRow(
+                label = "Usuario",
+                value = profile.username,
+                accent = MutedTeal
+            )
+
+            DetailRow(
+                label = "Correo",
+                value = profile.email,
+                accent = SoftRose
+            )
+
+            DetailRow(
+                label = "Creado",
+                value = formatInstant(profile.createdAt),
+                accent = LuxeGold,
+                showDivider = profile.updatedAt != null
+            )
 
             profile.updatedAt?.let {
-                DetailRow(label = "Ultima actualizacion", value = formatInstant(it))
+                DetailRow(
+                    label = "Ultima actualizacion",
+                    value = formatInstant(it),
+                    accent = MutedTeal,
+                    showDivider = false
+                )
             }
         }
     }
@@ -456,42 +858,69 @@ private fun AccountDetailsIsland(
 @Composable
 private fun DetailRow(
     label: String,
-    value: String
+    value: String,
+    accent: Color,
+    showDivider: Boolean = true
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PureWhite.copy(alpha = 0.46f)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(accent.copy(alpha = 0.85f))
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
             Text(
                 text = value,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = PureWhite,
+                textAlign = TextAlign.End
             )
         }
 
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-            thickness = 0.5.dp
-        )
+        if (showDivider) {
+            HorizontalDivider(
+                color = PureWhite.copy(alpha = 0.05f),
+                thickness = 0.5.dp
+            )
+        }
+
+        if (showDivider) {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }
 
 @Composable
 private fun SectionHeader(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String
 ) {
     Column(
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
@@ -508,19 +937,21 @@ private fun SectionHeader(
                         )
                     )
             )
+
             Spacer(modifier = Modifier.width(10.dp))
+
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = PureWhite
             )
         }
 
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f)
+            color = PureWhite.copy(alpha = 0.45f)
         )
     }
 }
@@ -535,7 +966,7 @@ private fun GlassIsland(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(IslandRadius),
-        color = GraphiteSurface.copy(alpha = 0.7f),
+        color = GraphiteSurface.copy(alpha = 0.70f),
         border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.05f))
     ) {
         Box(
@@ -575,6 +1006,10 @@ private fun GlassIsland(
     }
 }
 
+private fun totalFavorites(profile: UserProfile): Int {
+    return profile.totalLikedSongs + profile.totalLikedAlbums + profile.totalLikedArtists
+}
+
 private fun strongestArea(profile: UserProfile): String {
     val values = listOf(
         "canciones" to profile.totalLikedSongs,
@@ -582,6 +1017,10 @@ private fun strongestArea(profile: UserProfile): String {
         "artistas" to profile.totalLikedArtists
     )
     return values.maxByOrNull { it.second }?.first ?: "tu biblioteca"
+}
+
+private fun buildSummaryMessage(profile: UserProfile): String {
+    return "Tu cuenta reune ${formatCompactCount(totalFavorites(profile))} favoritos, ${formatCompactCount(profile.totalPlaylists)} playlists y ${formatCompactCount(profile.totalPlayHistory)} reproducciones registradas. Hoy el foco mas fuerte esta en ${strongestArea(profile)}."
 }
 
 private fun initialsFrom(name: String): String {
@@ -597,6 +1036,15 @@ private fun initialsFrom(name: String): String {
     }
 }
 
+private fun titleCase(value: String): String {
+    return value
+        .split(" ")
+        .joinToString(" ") { part ->
+            if (part.isBlank()) part
+            else part.take(1).uppercase() + part.drop(1)
+        }
+}
+
 private fun formatInstant(value: Instant): String {
     val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("es", "ES"))
     return value.atZone(ZoneId.systemDefault()).format(formatter)
@@ -605,6 +1053,14 @@ private fun formatInstant(value: Instant): String {
 private fun formatShortDate(value: Instant): String {
     val formatter = DateTimeFormatter.ofPattern("dd MMM", Locale("es", "ES"))
     return value.atZone(ZoneId.systemDefault()).format(formatter)
+}
+
+private fun formatCompactCount(value: Int): String {
+    return when {
+        value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
+        value >= 1_000 -> String.format(Locale.US, "%.1fK", value / 1_000f)
+        else -> value.toString()
+    }
 }
 
 private val previewProfile = UserProfile(
@@ -625,7 +1081,10 @@ private val previewProfile = UserProfile(
 private fun LoadingPreview() {
     EssenceAppTheme {
         CompositionLocalProvider(LocalBottomBarClearance provides 92.dp) {
-            ProfileContent(state = ProfileUiState.Loading, onRetry = {})
+            ProfileContent(
+                state = ProfileUiState.Loading,
+                onRetry = {}
+            )
         }
     }
 }
@@ -635,7 +1094,10 @@ private fun LoadingPreview() {
 private fun ErrorPreview() {
     EssenceAppTheme {
         CompositionLocalProvider(LocalBottomBarClearance provides 92.dp) {
-            ProfileContent(state = ProfileUiState.Error("No se pudo cargar el perfil."), onRetry = {})
+            ProfileContent(
+                state = ProfileUiState.Error("No se pudo cargar el perfil."),
+                onRetry = {}
+            )
         }
     }
 }
@@ -645,7 +1107,11 @@ private fun ErrorPreview() {
 private fun SuccessPreview() {
     EssenceAppTheme {
         CompositionLocalProvider(LocalBottomBarClearance provides 92.dp) {
-            ProfileContent(state = ProfileUiState.Success(previewProfile), onRetry = {})
+            ProfileContent(
+                state = ProfileUiState.Success(previewProfile),
+                onRetry = {},
+                onBack = {}
+            )
         }
     }
 }

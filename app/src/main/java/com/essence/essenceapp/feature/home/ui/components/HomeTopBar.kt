@@ -1,11 +1,13 @@
 package com.essence.essenceapp.feature.home.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,18 +26,26 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import com.essence.essenceapp.ui.theme.GraphiteSurface
 import com.essence.essenceapp.ui.theme.MidnightBlack
+import com.essence.essenceapp.ui.theme.MutedTeal
+import com.essence.essenceapp.ui.theme.PureWhite
 import com.essence.essenceapp.ui.theme.SoftRose
 
 @Composable
@@ -75,15 +85,26 @@ fun HomeTopBar(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = greeting,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        WavingHand(isAnimated = isLoggedIn)
+
+                        Text(
+                            text = greeting,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
@@ -94,13 +115,14 @@ fun HomeTopBar(
 
                 if (!isLoggedIn) {
                     Spacer(modifier = Modifier.width(8.dp))
+
                     OutlinedButton(
                         onClick = onLoginClick,
                         modifier = Modifier.height(36.dp),
                         shape = RoundedCornerShape(50),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        border = BorderStroke(1.dp, SoftRose.copy(alpha = 0.45f)),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
+                            contentColor = SoftRose
                         )
                     ) {
                         Text(
@@ -131,6 +153,42 @@ fun HomeTopBar(
 }
 
 @Composable
+private fun WavingHand(
+    isAnimated: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val rotation = remember { Animatable(0f) }
+
+    LaunchedEffect(isAnimated) {
+        if (!isAnimated) {
+            rotation.snapTo(0f)
+            return@LaunchedEffect
+        }
+        while (true) {
+            rotation.animateTo(22f, animationSpec = tween(durationMillis = 220))
+            rotation.animateTo(-12f, animationSpec = tween(durationMillis = 220))
+            rotation.animateTo(22f, animationSpec = tween(durationMillis = 220))
+            rotation.animateTo(0f, animationSpec = tween(durationMillis = 220))
+            delay(2400)
+        }
+    }
+
+    Box(
+        modifier = modifier.size(20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "👋",
+            fontSize = 16.sp,
+            modifier = Modifier.graphicsLayer {
+                rotationZ = rotation.value
+                transformOrigin = TransformOrigin(pivotFractionX = 0.7f, pivotFractionY = 0.9f)
+            }
+        )
+    }
+}
+
+@Composable
 private fun UserAvatar(
     username: String?,
     isLoggedIn: Boolean,
@@ -145,32 +203,71 @@ private fun UserAvatar(
         ?: ""
 
     Box(
-        modifier = modifier
-            .size(44.dp)
-            .border(
-                width = 1.5.dp,
-                color = if (isLoggedIn) SoftRose.copy(alpha = 0.7f)
-                else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f),
-                shape = CircleShape
-            )
-            .clip(CircleShape)
-            .background(GraphiteSurface),
+        modifier = modifier.size(46.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (isLoggedIn && initials.isNotEmpty()) {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+        if (isLoggedIn) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                SoftRose.copy(alpha = 0.22f),
+                                MutedTeal.copy(alpha = 0.10f),
+                                Color.Transparent
+                            )
+                        )
+                    )
             )
-        } else {
-            Icon(
-                imageVector = Icons.Outlined.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f),
-                modifier = Modifier.size(22.dp)
+        }
+
+        Surface(
+            modifier = Modifier.size(44.dp),
+            shape = CircleShape,
+            color = GraphiteSurface,
+            border = BorderStroke(
+                1.3.dp,
+                if (isLoggedIn) SoftRose.copy(alpha = 0.45f)
+                else PureWhite.copy(alpha = 0.10f)
             )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isLoggedIn && initials.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        SoftRose.copy(alpha = 0.90f),
+                                        MutedTeal.copy(alpha = 0.78f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite
+                        )
+                    }
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = null,
+                        tint = PureWhite.copy(alpha = 0.45f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
         }
     }
 }

@@ -11,6 +11,8 @@ data class PlaylistResponseApiDTO(
     val totalSongs: Int?,
     val createdAt: LocalDate?,
     val updatedAt: LocalDate?,
+    val type: String? = null,
     val totalLikes: Long? = null,
-    val isLiked: Boolean? = null
+    val isLiked: Boolean? = null,
+    val isOwner: Boolean? = null
 )

@@ -12,6 +12,9 @@ object PlaylistRoutes {
     const val PLAYLIST_FORM_CREATE = "$BASE/form"
     const val PLAYLIST_FORM_EDIT = "$BASE/form/{$PLAYLIST_ID}"
 
+    const val PLAYLIST_ADD_SONGS = "$BASE/add-songs/{$PLAYLIST_ID}"
+
     fun detail(id: Long): String = "$BASE/detail/$id"
     fun formEdit(id: Long): String = "$BASE/form/$id"
+    fun addSongs(id: Long): String = "$BASE/add-songs/$id"
 }

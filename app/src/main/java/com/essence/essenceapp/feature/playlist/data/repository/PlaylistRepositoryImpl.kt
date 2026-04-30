@@ -4,7 +4,9 @@ import com.essence.essenceapp.feature.playlist.data.api.PlaylistApiService
 import com.essence.essenceapp.feature.playlist.data.mapper.playlistRequestToData
 import com.essence.essenceapp.feature.playlist.data.mapper.playlistToDomain
 import com.essence.essenceapp.feature.playlist.data.mapper.playlistToSimpleDomain
+import com.essence.essenceapp.feature.playlist.data.mapper.toEditableDomain
 import com.essence.essenceapp.feature.playlist.domain.model.Playlist
+import com.essence.essenceapp.feature.playlist.domain.model.PlaylistEditable
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistRequest
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistSimple
 import com.essence.essenceapp.feature.playlist.domain.model.PlaylistsSimples
@@ -12,9 +14,11 @@ import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistReposit
 import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
 import com.essence.essenceapp.feature.playlist.data.mapper.playlistsSimplesToDomain
+import com.essence.essenceapp.shared.cache.QueueCache
 
 class PlaylistRepositoryImpl(
-    private val apiService: PlaylistApiService
+    private val apiService: PlaylistApiService,
+    private val queueCache: QueueCache
 ): PlaylistRepository {
 
     //crud
@@ -39,9 +43,9 @@ class PlaylistRepositoryImpl(
         return response?.playlistToDomain()
     }
 
-    override suspend fun getForUpdate(id: Long): Playlist? {
+    override suspend fun getForUpdate(id: Long): PlaylistEditable? {
         val response = apiService.getForUpdate(id)
-        return response?.playlistToDomain()
+        return response?.toEditableDomain()
     }
 
     override suspend fun deletePlaylist(id: Long) {
@@ -52,13 +56,15 @@ class PlaylistRepositoryImpl(
 
     override suspend fun getListSongs(id: Long): List<SongSimple>? {
         val response = apiService.getListSongs(id)
-        return response?.mapNotNull {
+        val mapped = response?.mapNotNull {
             it.songToSimpleDomain()
         }
+        mapped?.let { queueCache.set("playlist:$id", it) }
+        return mapped
     }
 
-    override suspend fun addSongToPlaylist(id: Long, songId: Long): Boolean {
-        return apiService.addSongToPlaylist(id, songId)
+    override suspend fun addSongToPlaylist(id: Long, songKey: String): Boolean {
+        return apiService.addSongToPlaylist(id, songKey)
     }
 
     override suspend fun deleteSongOfPlaylist(id: Long, songId: Long){

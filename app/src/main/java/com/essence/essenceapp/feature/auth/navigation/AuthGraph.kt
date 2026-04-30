@@ -6,6 +6,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.essence.essenceapp.feature.auth.login.ui.LoginScreen
 import com.essence.essenceapp.feature.auth.register.ui.RegisterScreen
+import com.essence.essenceapp.ui.shell.shellEnterTransition
+import com.essence.essenceapp.ui.shell.shellExitTransition
 
 fun NavGraphBuilder.authGraph(
     navController: NavController,
@@ -16,7 +18,13 @@ fun NavGraphBuilder.authGraph(
         route = AuthGraphRoutes.AUTH_GRAPH,
         startDestination = AuthRoutes.AUTH_LOGIN
     ) {
-        composable(route = AuthRoutes.AUTH_LOGIN) {
+        composable(
+            route = AuthRoutes.AUTH_LOGIN,
+            enterTransition = { shellEnterTransition },
+            exitTransition = { shellExitTransition },
+            popEnterTransition = { shellEnterTransition },
+            popExitTransition = { shellExitTransition }
+        ) {
             LoginScreen(
                 onBack = onExitAuth,
                 onLoginSuccess = onLoginSuccess,
@@ -28,7 +36,13 @@ fun NavGraphBuilder.authGraph(
             )
         }
 
-        composable(route = AuthRoutes.AUTH_REGISTER) {
+        composable(
+            route = AuthRoutes.AUTH_REGISTER,
+            enterTransition = { shellEnterTransition },
+            exitTransition = { shellExitTransition },
+            popEnterTransition = { shellEnterTransition },
+            popExitTransition = { shellExitTransition }
+        ) {
             RegisterScreen(
                 onBack = onExitAuth,
                 onNavigateToLogin = {

@@ -8,14 +8,9 @@ import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
 
 fun SearchApiDTO.searchToDomain(): Search {
     return Search(
-        songs = this.songs?.mapNotNull {
-            it.songToSimpleDomain()
-        },
-        albums = this.albums?.mapNotNull {
-            it.albumToSimpleDomain()
-        },
-        artists = this.artists?.mapNotNull {
-            it.artistToSimpleDomain()
-        }
+        songs = songs?.mapNotNull { it.songToSimpleDomain() },
+        albums = albums?.mapNotNull { it.albumToSimpleDomain() },
+        artists = artists?.mapNotNull { it.artistToSimpleDomain() },
+        hasNextPage = hasNextPage
     )
 }

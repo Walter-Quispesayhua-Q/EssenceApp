@@ -4,6 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.essence.essenceapp.feature.profile.ui.ProfileScreen
+import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.profileGraph() {
     navigation(
@@ -11,7 +12,9 @@ fun NavGraphBuilder.profileGraph() {
         startDestination = ProfileRoutes.PROFILE
     ) {
         composable(route = ProfileRoutes.PROFILE) {
-            ProfileScreen()
+            OffscreenSurface {
+                ProfileScreen()
+            }
         }
     }
 }

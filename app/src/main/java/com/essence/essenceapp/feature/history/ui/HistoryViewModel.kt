@@ -6,6 +6,7 @@ import com.essence.essenceapp.feature.history.domain.usecase.GetSongsOfHistoryUs
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,19 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                val result = getSongsOfHistoryUseCase()
+                result.onSuccess { songs ->
+                    _uiState.value = HistoryUiState.Success(songs = songs)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) { /* mantener estado actual */ }
+        }
+    }
+
     private fun loadHistory() {
         viewModelScope.launch {
             _uiState.value = HistoryUiState.Loading
@@ -43,6 +57,8 @@ class HistoryViewModel @Inject constructor(
                         message = error.toUserMessage()
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = HistoryUiState.Error(
                     message = e.toUserMessage()

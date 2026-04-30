@@ -16,6 +16,7 @@ interface SearchApiService {
     @GET(BASE)
     suspend fun search(
         @Query("query") query: String,
-        @Query("type") type: String? = null
+        @Query("type") type: String? = null,
+        @Query("page") page: Int = 0
     ): SearchApiDTO?
 }

@@ -13,7 +13,9 @@ fun PlaylistResponseApiDTO.playlistToDomain(): Playlist? {
         totalSongs = this.totalSongs ?: return null,
         createdAt = this.createdAt ?: return null,
         updatedAt = this.updatedAt,
+        type = this.type ?: "NORMAL",
         totalLikes = this.totalLikes,
-        isLiked = this.isLiked ?: false
+        isLiked = this.isLiked ?: false,
+        isOwner = this.isOwner ?: false
     )
 }

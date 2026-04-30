@@ -13,32 +13,47 @@ import com.essence.essenceapp.feature.playlist.navigation.playlistGraph
 import com.essence.essenceapp.feature.profile.navigation.profileGraph
 import com.essence.essenceapp.feature.search.navigation.searchGraph
 import com.essence.essenceapp.feature.song.navigation.songGraph
+import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
+import com.essence.essenceapp.ui.shell.shellEnterTransition
+import com.essence.essenceapp.ui.shell.shellExitTransition
+import com.essence.essenceapp.ui.shell.shellPopEnterTransition
+import com.essence.essenceapp.ui.shell.shellPopExitTransition
 
 @Composable
 fun MainTabsNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
+    playbackManager: PlaybackManager,
     isLoggedIn: Boolean,
     onRequireAuth: () -> Unit
 ) {
     NavHost(
         navController = navController,
         startDestination = HomeGraphRoutes.HOME_GRAPH,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = { shellEnterTransition },
+        exitTransition = { shellExitTransition },
+        popEnterTransition = { shellPopEnterTransition },
+        popExitTransition = { shellPopExitTransition }
     ) {
         homeGraph(
             navController = navController,
+            playbackManager = playbackManager,
             isLoggedIn = isLoggedIn,
             onRequireAuth = onRequireAuth
         )
 
         searchGraph(
             navController = navController,
+            playbackManager = playbackManager,
             isLoggedIn = isLoggedIn,
             onRequireAuth = onRequireAuth
         )
 
-        playlistGraph(navController)
+        playlistGraph(
+            navController = navController,
+            playbackManager = playbackManager
+        )
 
         profileGraph()
 
@@ -48,11 +63,18 @@ fun MainTabsNavHost(
             onRequireAuth = onRequireAuth
         )
 
-        artistGraph(navController)
-        albumGraph(navController)
+        artistGraph(
+            navController = navController,
+            playbackManager = playbackManager
+        )
+        albumGraph(
+            navController = navController,
+            playbackManager = playbackManager
+        )
 
         historyGraph(
             navController = navController,
+            playbackManager = playbackManager,
             isLoggedIn = isLoggedIn,
             onRequireAuth = onRequireAuth
         )

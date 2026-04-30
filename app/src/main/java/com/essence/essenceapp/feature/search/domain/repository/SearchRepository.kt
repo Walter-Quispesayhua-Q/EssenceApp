@@ -5,5 +5,5 @@ import com.essence.essenceapp.feature.search.domain.model.Search
 
 interface SearchRepository {
     suspend fun getCategories(): List<Category>?
-    suspend fun search(query: String, type: String? = null): Search?
+    suspend fun search(query: String, type: String? = null, page: Int = 0): Search?
 }

@@ -36,7 +36,17 @@ class PlaylistDetailViewModel @Inject constructor(
         currentPlaylistId = id
 
         viewModelScope.launch {
-            _uiState.value = PlaylistDetailUiState.Loading
+            val previous = _uiState.value
+            val isSamePlaylistRefresh = previous is PlaylistDetailUiState.Success &&
+                previous.playlist.id == id
+
+            if (isSamePlaylistRefresh) {
+                _uiState.value = (previous as PlaylistDetailUiState.Success).copy(
+                    isRefreshing = true
+                )
+            } else {
+                _uiState.value = PlaylistDetailUiState.Loading
+            }
 
             try {
                 val playlistDeferred = async { getPlaylistUseCase(id) }
@@ -51,19 +61,32 @@ class PlaylistDetailViewModel @Inject constructor(
                         playlist = playlist,
                         songs = songs,
                         isSongsLoading = false,
+                        isRefreshing = false,
                         isLikeSubmitting = false
                     )
                 }
 
                 playlistResult.onFailure { error ->
-                    _uiState.value = PlaylistDetailUiState.Error(
-                        message = error.toUserMessage()
-                    )
+                    if (isSamePlaylistRefresh) {
+                        _uiState.value = (previous as PlaylistDetailUiState.Success).copy(
+                            isRefreshing = false
+                        )
+                    } else {
+                        _uiState.value = PlaylistDetailUiState.Error(
+                            message = error.toUserMessage()
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.value = PlaylistDetailUiState.Error(
-                    message = e.toUserMessage()
-                )
+                if (isSamePlaylistRefresh) {
+                    _uiState.value = (previous as PlaylistDetailUiState.Success).copy(
+                        isRefreshing = false
+                    )
+                } else {
+                    _uiState.value = PlaylistDetailUiState.Error(
+                        message = e.toUserMessage()
+                    )
+                }
             }
         }
     }
@@ -71,8 +94,10 @@ class PlaylistDetailViewModel @Inject constructor(
     fun onAction(action: PlaylistDetailAction) {
         when (action) {
             PlaylistDetailAction.EditPlaylist -> Unit
+            PlaylistDetailAction.AddSongs -> Unit
             PlaylistDetailAction.DeletePlaylist -> deleteCurrentPlaylist()
             is PlaylistDetailAction.RemoveSong -> removeSong(action.songId)
+            is PlaylistDetailAction.OpenSong -> Unit
             PlaylistDetailAction.ToggleLike -> toggleLike()
         }
     }
@@ -100,27 +125,38 @@ class PlaylistDetailViewModel @Inject constructor(
     }
 
     private fun deleteCurrentPlaylist() {
+        val current = _uiState.value as? PlaylistDetailUiState.Success ?: return
+        if (current.isDeleting) return
+
         viewModelScope.launch {
             val id = currentPlaylistId ?: return@launch
 
-            try {
-                val result = deletePlaylistUseCase(id)
-                result.onSuccess {
-                    _uiState.value = PlaylistDetailUiState.Error(
-                        message = "Playlist eliminada"
-                    )
-                }
-                result.onFailure { error ->
-                    _uiState.value = PlaylistDetailUiState.Error(
-                        message = error.toUserMessage()
-                    )
-                }
+            _uiState.value = current.copy(isDeleting = true, deleteError = null)
+
+            val result = try {
+                deletePlaylistUseCase(id)
             } catch (e: Exception) {
-                _uiState.value = PlaylistDetailUiState.Error(
-                    message = e.toUserMessage()
+                Result.failure(e)
+            }
+
+            result.onSuccess {
+                _uiState.value = PlaylistDetailUiState.Deleted
+            }
+
+            result.onFailure { error ->
+                val latest = _uiState.value as? PlaylistDetailUiState.Success ?: return@onFailure
+                _uiState.value = latest.copy(
+                    isDeleting = false,
+                    deleteError = error.toUserMessage()
                 )
             }
         }
+    }
+
+    fun clearDeleteError() {
+        val current = _uiState.value as? PlaylistDetailUiState.Success ?: return
+        if (current.deleteError == null) return
+        _uiState.value = current.copy(deleteError = null)
     }
 
     private fun toggleLike() {

@@ -5,8 +5,8 @@ import com.essence.essenceapp.feature.playlist.domain.repository.PlaylistReposit
 class AddSongToPlaylistUseCase(
     private val playlistRepository: PlaylistRepository
 ) {
-    suspend operator fun invoke(id: Long, songId: Long): Result<Boolean> {
-        val response = playlistRepository.addSongToPlaylist(id, songId)
+    suspend operator fun invoke(id: Long, songKey: String): Result<Boolean> {
+        val response = playlistRepository.addSongToPlaylist(id, songKey)
         return if (response) {
             Result.success(response)
         } else {

@@ -1,67 +1,55 @@
 package com.essence.essenceapp.feature.song.ui.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.util.lerp
+import com.essence.essenceapp.ui.theme.LuxeGold
+import com.essence.essenceapp.ui.theme.PureWhite
+import kotlin.math.absoluteValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.essence.essenceapp.feature.album.domain.model.AlbumSimple
 import com.essence.essenceapp.feature.artist.domain.model.ArtistSimple
 import com.essence.essenceapp.feature.song.domain.model.Song
 import com.essence.essenceapp.feature.song.ui.SongDetailAction
 import com.essence.essenceapp.feature.song.ui.SongDetailUiState
-import com.essence.essenceapp.feature.song.ui.manager.PlaybackUiState
-import com.essence.essenceapp.feature.song.ui.manager.SongDetailManagerAction
-import com.essence.essenceapp.feature.song.ui.manager.components.PlaybackManagerContent
+import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
+import com.essence.essenceapp.feature.song.ui.playback.PlaybackRepeatMode
+import com.essence.essenceapp.feature.song.ui.playback.PlaybackUiState
+import com.essence.essenceapp.feature.song.ui.playback.components.PlaybackManagerContent
+import com.essence.essenceapp.shared.playback.model.PlaybackQueueItem
 import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
-import com.essence.essenceapp.ui.shell.LocalBottomBarClearance
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
-import com.essence.essenceapp.ui.theme.GraphiteSurface
-import com.essence.essenceapp.ui.theme.LuxeGold
-import com.essence.essenceapp.ui.theme.MidnightBlack
-import com.essence.essenceapp.ui.theme.MutedTeal
-import com.essence.essenceapp.ui.theme.PureWhite
-import com.essence.essenceapp.ui.theme.SoftRose
 import java.time.LocalDate
 
 @Composable
@@ -69,48 +57,48 @@ fun SongDetailContent(
     modifier: Modifier = Modifier,
     state: SongDetailUiState,
     onAction: (SongDetailAction) -> Unit,
-    onManagerAction: (SongDetailManagerAction) -> Unit
+    onPlaybackAction: (PlaybackAction) -> Unit
 ) {
-    when (state) {
-        SongDetailUiState.Loading -> LoadingState(modifier = modifier)
-        is SongDetailUiState.Error -> AppErrorState(
-            modifier = modifier,
-            message = state.message,
-            title = "No se pudo cargar la canción",
-            onRetry = { onAction(SongDetailAction.Refresh) }
-        )
-        is SongDetailUiState.Success -> SuccessState(
-            modifier = modifier,
-            song = state.song,
-            playback = state.playback,
-            isLikeSubmitting = state.isLikeSubmitting,
-            onAction = onAction,
-            onManagerAction = onManagerAction
-        )
-    }
-}
-
-@Composable
-private fun LoadingState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MidnightBlack),
-        contentAlignment = Alignment.Center
+    val currentDensity = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density = currentDensity.density, fontScale = 1f)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(28.dp),
-                strokeWidth = 2.5.dp,
-                color = SoftRose
+        when (state) {
+            SongDetailUiState.Loading -> LoadingState(
+                modifier = modifier,
+                onPlaybackAction = onPlaybackAction
             )
-            Text(
-                text = "Cargando canción...",
-                style = MaterialTheme.typography.bodySmall,
-                color = PureWhite.copy(alpha = 0.5f)
+
+            is SongDetailUiState.LoadingNextSong -> LoadingNextSongState(
+                modifier = modifier,
+                title = state.title,
+                artistName = state.artistName,
+                imageKey = state.imageKey,
+                playback = state.playback,
+                onPlaybackAction = onPlaybackAction
+            )
+
+            is SongDetailUiState.Error -> AppErrorState(
+                modifier = modifier,
+                message = state.message,
+                title = "No se pudo cargar la cancion",
+                onRetry = { onAction(SongDetailAction.Refresh) }
+            )
+
+            is SongDetailUiState.Success -> SuccessState(
+                modifier = modifier,
+                song = state.song,
+                playback = state.playback,
+                isLikeSubmitting = state.isLikeSubmitting,
+                queueItems = state.queueItems,
+                queueCurrentIndex = state.queueCurrentIndex,
+                onAction = onAction,
+                onPlaybackAction = onPlaybackAction
+            )
+
+            is SongDetailUiState.Unavailable -> UnavailableState(
+                modifier = modifier,
+                songTitle = state.songTitle
             )
         }
     }
@@ -122,350 +110,264 @@ private fun SuccessState(
     song: Song,
     playback: PlaybackUiState,
     isLikeSubmitting: Boolean,
+    queueItems: List<PlaybackQueueItem>,
+    queueCurrentIndex: Int,
     onAction: (SongDetailAction) -> Unit,
-    onManagerAction: (SongDetailManagerAction) -> Unit
+    onPlaybackAction: (PlaybackAction) -> Unit
 ) {
-    val bottomClearance = LocalBottomBarClearance.current
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val safeBottom = navBottom + 20.dp
+    val hasInfo = song.album != null || song.artists.isNotEmpty()
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            SoftRose.copy(alpha = 0.22f),
-                            MutedTeal.copy(alpha = 0.12f),
-                            MidnightBlack.copy(alpha = 0.85f),
-                            MidnightBlack
-                        ),
-                        startY = 0f,
-                        endY = Float.POSITIVE_INFINITY
-                    )
-                )
-        )
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        SongAmbientBackground(imageKey = song.imageKey)
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            SoftRose.copy(alpha = 0.08f),
-                            Color.Transparent
-                        ),
-                        radius = 800f
-                    )
-                )
-        )
-
-        GlassBackButton(
-            onClick = { onAction(SongDetailAction.Back) },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .statusBarsPadding()
-                .padding(start = 16.dp, top = 12.dp)
-                .zIndex(10f)
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .statusBarsPadding()
-                .padding(
-                    top = 72.dp,
-                    bottom = bottomClearance + 24.dp
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = safeBottom)
         ) {
-            CoverSection(song = song)
+            item {
+                SongHero(
+                    song = song,
+                    audioOutput = playback.audioOutput,
+                    isPulsing = playback.isPlaying && !playback.isBuffering,
+                    onArtistClick = { lookup ->
+                        onAction(SongDetailAction.OpenArtist(lookup))
+                    }
+                )
+            }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            MetaRow(song = song)
+                PlaybackManagerContent(
+                    state = playback,
+                    onAction = onPlaybackAction,
+                    isLiked = song.isLiked,
+                    isLikeSubmitting = isLikeSubmitting,
+                    onToggleLike = { onAction(SongDetailAction.ToggleLike) },
+                    showMetaHeader = false
+                )
+            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            PlaybackManagerContent(
-                state = playback,
-                onAction = onManagerAction,
-                songTitle = song.title,
-                artistName = song.artists.joinToString(", ") { it.nameArtist },
-                isLiked = song.isLiked,
-                isLikeSubmitting = isLikeSubmitting,
-                onToggleLike = { onAction(SongDetailAction.ToggleLike) }
-            )
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            DetailsIsland(
-                song = song,
-                onAction = onAction,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun GlassBackButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = GraphiteSurface.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.08f))
-    ) {
-        IconButton(onClick = onClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Volver",
-                tint = PureWhite.copy(alpha = 0.85f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun CoverSection(song: Song) {
-    Surface(
-        modifier = Modifier.size(260.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = GraphiteSurface,
-        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.06f)),
-        shadowElevation = 24.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            SoftRose.copy(alpha = 0.3f),
-                            MutedTeal.copy(alpha = 0.2f),
-                            GraphiteSurface
-                        )
+            if (queueItems.isNotEmpty() || hasInfo) {
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    DetailSwipePager(
+                        song = song,
+                        queueItems = queueItems,
+                        queueCurrentIndex = queueCurrentIndex,
+                        isPulsing = playback.isPlaying && !playback.isBuffering,
+                        isBuffering = playback.isBuffering,
+                        onAction = onAction,
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = song.title.take(2).uppercase(),
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold,
-                color = PureWhite.copy(alpha = 0.15f)
-            )
+                }
+            }
         }
+
+        SongTopBar(
+            onBack = { onAction(SongDetailAction.Back) },
+            onAddToPlaylist = { onAction(SongDetailAction.AddToPlaylist) },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun MetaRow(song: Song) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        song.songType?.takeIf { it.isNotBlank() }?.let {
-            MetaPill(text = it, accent = MutedTeal)
-        }
-        song.releaseDate?.let {
-            MetaPill(text = "${it.year}", accent = SoftRose)
-        }
-        song.totalPlays?.let {
-            MetaPill(text = formatPlays(it), accent = LuxeGold)
-        }
-    }
-}
-
-@Composable
-private fun DetailsIsland(
+private fun DetailSwipePager(
     song: Song,
+    queueItems: List<com.essence.essenceapp.shared.playback.model.PlaybackQueueItem>,
+    queueCurrentIndex: Int,
+    isPulsing: Boolean,
+    isBuffering: Boolean,
     onAction: (SongDetailAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    GlassIsland(
-        modifier = modifier,
-        accent = MutedTeal,
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            if (song.album != null) {
-                RelationRow(
-                    icon = Icons.Default.Album,
-                    label = "Álbum",
-                    value = song.album.title,
-                    accent = LuxeGold,
-                    onClick = { onAction(SongDetailAction.OpenAlbum(song.album.detailLookup)) }
-                )
-            }
+    val hasQueue = queueItems.isNotEmpty()
+    val hasInfo = song.album != null || song.artists.isNotEmpty()
 
-            song.artists.forEach { artist ->
-                RelationRow(
-                    icon = Icons.Default.Person,
-                    label = "Artista",
-                    value = artist.nameArtist,
-                    accent = MutedTeal,
-                    onClick = { onAction(SongDetailAction.OpenArtist(artist.detailLookup)) }
-                )
-            }
+    val pageKinds = remember(hasQueue, hasInfo) {
+        buildList {
+            if (hasQueue) add(SwipePage.Queue)
+            if (hasInfo) add(SwipePage.Info)
+        }
+    }
 
-            RelationRow(
-                icon = Icons.Default.PlayArrow,
-                label = "Duración",
-                value = formatDuration(song.durationMs.toLong()),
-                accent = SoftRose,
-                onClick = null
+    if (pageKinds.isEmpty()) return
+
+    if (pageKinds.size == 1) {
+        Box(modifier = modifier.fillMaxWidth()) {
+            RenderSwipePage(
+                kind = pageKinds.first(),
+                song = song,
+                queueItems = queueItems,
+                queueCurrentIndex = queueCurrentIndex,
+                isPulsing = isPulsing,
+                isBuffering = isBuffering,
+                onAction = onAction
             )
         }
+        return
+    }
+
+    val pagerState = rememberPagerState(initialPage = 0) { pageKinds.size }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        SubcomposeLayout(modifier = Modifier.fillMaxWidth()) { constraints ->
+            val measuredHeights = pageKinds.map { kind ->
+                subcompose(MeasureSlot(kind)) {
+                    RenderSwipePage(
+                        kind = kind,
+                        song = song,
+                        queueItems = queueItems,
+                        queueCurrentIndex = queueCurrentIndex,
+                        isPulsing = isPulsing,
+                        isBuffering = isBuffering,
+                        onAction = onAction
+                    )
+                }.firstOrNull()?.measure(constraints)?.height ?: 0
+            }
+
+            val currentPage = pagerState.currentPage.coerceIn(0, measuredHeights.lastIndex)
+            val pageOffset = pagerState.currentPageOffsetFraction
+            val neighborIndex = if (pageOffset >= 0f) {
+                (currentPage + 1).coerceAtMost(measuredHeights.lastIndex)
+            } else {
+                (currentPage - 1).coerceAtLeast(0)
+            }
+            val fromHeight = measuredHeights[currentPage]
+            val toHeight = measuredHeights[neighborIndex]
+            val targetHeight = lerp(
+                fromHeight.toFloat(),
+                toHeight.toFloat(),
+                pageOffset.absoluteValue.coerceIn(0f, 1f)
+            ).toInt()
+
+            val pagerPlaceable = subcompose(PagerSlot) {
+                HorizontalPager(
+                    state = pagerState,
+                    pageSpacing = 16.dp,
+                    verticalAlignment = Alignment.Top,
+                    modifier = Modifier.fillMaxWidth()
+                ) { pageIndex ->
+                    val rawOffset = (
+                        (pagerState.currentPage - pageIndex).toFloat() +
+                            pagerState.currentPageOffsetFraction
+                    )
+                    val absOffset = rawOffset.absoluteValue.coerceIn(0f, 1f)
+                    val easedOffset = FastOutSlowInEasing.transform(absOffset)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                val scale = lerp(0.90f, 1f, 1f - easedOffset)
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = lerp(0.45f, 1f, 1f - easedOffset)
+                            }
+                    ) {
+                        RenderSwipePage(
+                            kind = pageKinds[pageIndex],
+                            song = song,
+                            queueItems = queueItems,
+                            queueCurrentIndex = queueCurrentIndex,
+                            isPulsing = isPulsing,
+                            isBuffering = isBuffering,
+                            onAction = onAction
+                        )
+                    }
+                }
+            }.first().measure(
+                constraints.copy(
+                    minHeight = targetHeight,
+                    maxHeight = targetHeight
+                )
+            )
+
+            layout(pagerPlaceable.width, pagerPlaceable.height) {
+                pagerPlaceable.placeRelative(0, 0)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PagerDots(
+            count = pageKinds.size,
+            currentIndex = pagerState.currentPage,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
     }
 }
 
-@Composable
-private fun RelationRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    accent: Color,
-    onClick: (() -> Unit)?
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable(onClick = onClick)
-                else Modifier
-            )
-            .padding(horizontal = 4.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Surface(
-            modifier = Modifier.size(36.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = accent.copy(alpha = 0.1f)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
+private object PagerSlot
+private data class MeasureSlot(val kind: SwipePage)
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = PureWhite.copy(alpha = 0.4f)
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = PureWhite,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
+private enum class SwipePage { Queue, Info }
 
 @Composable
-private fun MetaPill(
-    text: String,
-    accent: Color
+private fun RenderSwipePage(
+    kind: SwipePage,
+    song: Song,
+    queueItems: List<com.essence.essenceapp.shared.playback.model.PlaybackQueueItem>,
+    queueCurrentIndex: Int,
+    isPulsing: Boolean,
+    isBuffering: Boolean,
+    onAction: (SongDetailAction) -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = accent.copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.12f))
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            color = accent.copy(alpha = 0.85f)
+    when (kind) {
+        SwipePage.Queue -> SongQueueIsland(
+            items = queueItems,
+            currentIndex = queueCurrentIndex,
+            isPulsing = isPulsing,
+            isBuffering = isBuffering,
+            onItemClick = { index -> onAction(SongDetailAction.PlayQueueItem(index)) }
+        )
+        SwipePage.Info -> CombinedInfoIsland(
+            album = song.album,
+            artists = song.artists,
+            onAlbumClick = { lookup -> onAction(SongDetailAction.OpenAlbum(lookup)) },
+            onArtistClick = { lookup -> onAction(SongDetailAction.OpenArtist(lookup)) }
         )
     }
 }
 
 @Composable
-private fun GlassIsland(
-    modifier: Modifier = Modifier,
-    accent: Color,
-    contentPadding: PaddingValues = PaddingValues(20.dp),
-    content: @Composable BoxScope.() -> Unit
+private fun PagerDots(
+    count: Int,
+    currentIndex: Int,
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = GraphiteSurface.copy(alpha = 0.55f),
-        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.06f))
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        repeat(count) { index ->
+            val selected = index == currentIndex
+            val dotSize by animateDpAsState(
+                targetValue = if (selected) 8.dp else 6.dp,
+                label = "dot_size"
+            )
+            val color = if (selected) LuxeGold else PureWhite.copy(alpha = 0.22f)
             Box(
                 modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                PureWhite.copy(alpha = 0.04f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accent.copy(alpha = 0.08f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            Box(
-                modifier = Modifier.padding(contentPadding),
-                content = content
+                    .size(dotSize)
+                    .clip(CircleShape)
+                    .background(color)
             )
         }
     }
 }
 
-private fun formatDuration(durationMs: Long): String {
-    val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
-}
-
-private fun formatPlays(value: Int): String {
-    return when {
-        value >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", value / 1_000_000f)
-        value >= 1_000 -> String.format(java.util.Locale.US, "%.1fK", value / 1_000f)
-        else -> value.toString()
-    }
-}
+// PREVIEWS
 
 private val previewSong = Song(
     id = 1L,
-    title = "Tití Me Preguntó",
+    title = "Titi Me Pregunto",
     durationMs = 210_000,
     hlsMasterKey = "songs/titi/master.m3u8",
     imageKey = null,
@@ -476,8 +378,17 @@ private val previewSong = Song(
         ArtistSimple(10L, "Bad Bunny", null, "artists/bad-bunny"),
         ArtistSimple(11L, "Chencho Corleone", null, "artists/chencho")
     ),
-    album = AlbumSimple(20L, "Un Verano Sin Ti", null, "albums/uvst", listOf("Bad Bunny"), LocalDate.of(2022, 5, 6)),
-    releaseDate = LocalDate.of(2022, 5, 6)
+    album = AlbumSimple(
+        20L,
+        "Un Verano Sin Ti",
+        null,
+        "albums/uvst",
+        listOf("Bad Bunny"),
+        LocalDate.of(2022, 5, 6)
+    ),
+    releaseDate = LocalDate.of(2022, 5, 6),
+    streamingUrl = null,
+    streamingUrlExpiresAt = null
 )
 
 @Preview(name = "Song - Playing", showBackground = true, backgroundColor = 0xFF121212)
@@ -487,11 +398,16 @@ private fun PlayingPreview() {
         SongDetailContent(
             state = SongDetailUiState.Success(
                 song = previewSong,
-                playback = PlaybackUiState(isPlaying = true, positionMs = 72_000L, durationMs = 210_000L),
+                playback = PlaybackUiState(
+                    isPlaying = true,
+                    positionMs = 72_000L,
+                    durationMs = 210_000L,
+                    repeatMode = PlaybackRepeatMode.One
+                ),
                 isLikeSubmitting = false
             ),
             onAction = {},
-            onManagerAction = {}
+            onPlaybackAction = {}
         )
     }
 }
@@ -503,11 +419,16 @@ private fun PausedPreview() {
         SongDetailContent(
             state = SongDetailUiState.Success(
                 song = previewSong,
-                playback = PlaybackUiState(isPlaying = false, positionMs = 45_000L, durationMs = 210_000L),
+                playback = PlaybackUiState(
+                    isPlaying = false,
+                    positionMs = 45_000L,
+                    durationMs = 210_000L,
+                    repeatMode = PlaybackRepeatMode.Off
+                ),
                 isLikeSubmitting = false
             ),
             onAction = {},
-            onManagerAction = {}
+            onPlaybackAction = {}
         )
     }
 }

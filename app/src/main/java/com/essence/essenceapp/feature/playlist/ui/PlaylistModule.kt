@@ -14,6 +14,9 @@ import com.essence.essenceapp.feature.playlist.domain.usecase.GetListSongsUseCas
 import com.essence.essenceapp.feature.playlist.domain.usecase.GetPlaylistUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.GetPlaylistsByUserUseCase
 import com.essence.essenceapp.feature.playlist.domain.usecase.UpdatePlaylistUseCase
+import com.essence.essenceapp.feature.playlist.ui.addsongs.domain.EnsureAndAddSongToPlaylistInteractor
+import com.essence.essenceapp.feature.song.data.api.SongApiService
+import com.essence.essenceapp.shared.cache.QueueCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,8 +38,8 @@ object PlaylistModule {
     // Repository
     @Provides
     @Singleton
-    fun providePlaylistRepository(apiService: PlaylistApiService): PlaylistRepository {
-        return PlaylistRepositoryImpl(apiService)
+    fun providePlaylistRepository(apiService: PlaylistApiService, queueCache: QueueCache): PlaylistRepository {
+        return PlaylistRepositoryImpl(apiService, queueCache)
     }
 
     // UseCases - List
@@ -64,6 +67,14 @@ object PlaylistModule {
     @Provides
     fun provideAddSongToPlaylistUseCase(repo: PlaylistRepository): AddSongToPlaylistUseCase {
         return AddSongToPlaylistUseCase(repo)
+    }
+
+    @Provides
+    fun provideEnsureAndAddSongToPlaylistInteractor(
+        repo: PlaylistRepository,
+        songApiService: SongApiService
+    ): EnsureAndAddSongToPlaylistInteractor {
+        return EnsureAndAddSongToPlaylistInteractor(repo, songApiService)
     }
 
     @Provides

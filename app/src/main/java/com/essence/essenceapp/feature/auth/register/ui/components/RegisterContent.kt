@@ -164,9 +164,9 @@ private fun RegisterEditingContent(
                 .imePadding()
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(96.dp))
 
             Text(
                 text = "Essence",
@@ -311,6 +311,7 @@ private fun GlassFormIsland(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Correo electrónico") },
+                    isError = ui.emailError != null,
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Email,
@@ -325,7 +326,16 @@ private fun GlassFormIsland(
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
-                    )
+                    ),
+                    supportingText = {
+                        if (ui.emailError != null) {
+                            Text(
+                                text = ui.emailError,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SoftRose.copy(alpha = 0.85f)
+                            )
+                        }
+                    }
                 )
 
                 OutlinedTextField(

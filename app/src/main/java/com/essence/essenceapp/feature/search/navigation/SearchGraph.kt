@@ -1,4 +1,4 @@
-﻿package com.essence.essenceapp.feature.search.navigation
+package com.essence.essenceapp.feature.search.navigation
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
@@ -8,9 +8,12 @@ import com.essence.essenceapp.feature.album.navigation.AlbumRoutes
 import com.essence.essenceapp.feature.artist.navigation.ArtistRoutes
 import com.essence.essenceapp.feature.search.ui.SearchScreen
 import com.essence.essenceapp.feature.song.navigation.SongRoutes
+import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
+import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.searchGraph(
     navController: NavController,
+    playbackManager: PlaybackManager,
     isLoggedIn: Boolean,
     onRequireAuth: () -> Unit
 ) {
@@ -19,21 +22,28 @@ fun NavGraphBuilder.searchGraph(
         startDestination = SearchRoutes.SEARCH
     ) {
         composable(route = SearchRoutes.SEARCH) {
-            SearchScreen(
-                onOpenSong = { songLookup ->
-                    if (isLoggedIn) {
-                        navController.navigate(SongRoutes.detail(songLookup))
-                    } else {
-                        onRequireAuth()
+            OffscreenSurface {
+                SearchScreen(
+                    onOpenSong = { request ->
+                        if (isLoggedIn) {
+                            playbackManager.setQueueFromItems(
+                                items = request.queue,
+                                startIndex = request.startIndex,
+                                sourceKey = request.sourceKey
+                            )
+                            navController.navigate(SongRoutes.detail(request.songLookup))
+                        } else {
+                            onRequireAuth()
+                        }
+                    },
+                    onOpenAlbum = { albumLookup ->
+                        navController.navigate(AlbumRoutes.detail(albumLookup))
+                    },
+                    onOpenArtist = { artistLookup ->
+                        navController.navigate(ArtistRoutes.detail(artistLookup))
                     }
-                },
-                onOpenAlbum = { albumLookup ->
-                    navController.navigate(AlbumRoutes.detail(albumLookup))
-                },
-                onOpenArtist = { artistLookup ->
-                    navController.navigate(ArtistRoutes.detail(artistLookup))
-                }
-            )
+                )
+            }
         }
     }
 }

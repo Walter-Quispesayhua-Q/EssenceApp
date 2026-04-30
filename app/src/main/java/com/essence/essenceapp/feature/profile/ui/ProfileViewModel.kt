@@ -2,46 +2,70 @@ package com.essence.essenceapp.feature.profile.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.essence.essenceapp.feature.profile.domain.usecase.GetUserProfileUseCase
+import com.essence.essenceapp.feature.profile.domain.usecase.ObserveUserProfileUseCase
+import com.essence.essenceapp.feature.profile.domain.usecase.RefreshUserProfileUseCase
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val getUserProfileUseCase: GetUserProfileUseCase
+    observeUserProfileUseCase: ObserveUserProfileUseCase,
+    private val refreshUserProfileUseCase: RefreshUserProfileUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
-    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+    private val refreshing = MutableStateFlow(false)
+    private val refreshError = MutableStateFlow<String?>(null)
+
+    val uiState: StateFlow<ProfileUiState> = combine(
+        observeUserProfileUseCase(),
+        refreshing,
+        refreshError
+    ) { profile, isRefreshing, error ->
+        when {
+            profile != null -> ProfileUiState.Success(
+                profile = profile,
+                isRefreshing = isRefreshing
+            )
+            isRefreshing -> ProfileUiState.Loading
+            error != null -> ProfileUiState.Error(error)
+            else -> ProfileUiState.Loading
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = ProfileUiState.Loading
+    )
 
     init {
-        loadProfile()
+        refresh()
     }
 
     fun onRefresh() {
-        loadProfile()
+        refresh()
     }
 
-    private fun loadProfile() {
-        viewModelScope.launch {
-            _uiState.value = ProfileUiState.Loading
+    fun silentRefresh() {
+        refresh()
+    }
 
-            try {
-                val result = getUserProfileUseCase()
-                result.onSuccess { profile ->
-                    _uiState.value = ProfileUiState.Success(profile)
+    private fun refresh() {
+        viewModelScope.launch {
+            refreshing.value = true
+            refreshError.value = null
+
+            refreshUserProfileUseCase()
+                .onFailure { error ->
+                    refreshError.value = error.toUserMessage()
                 }
-                result.onFailure { error ->
-                    _uiState.value = ProfileUiState.Error(error.toUserMessage())
-                }
-            } catch (e: Exception) {
-                _uiState.value = ProfileUiState.Error(e.toUserMessage())
-            }
+
+            refreshing.value = false
         }
     }
 }

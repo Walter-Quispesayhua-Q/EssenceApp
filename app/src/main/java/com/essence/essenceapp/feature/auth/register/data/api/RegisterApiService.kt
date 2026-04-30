@@ -13,7 +13,7 @@ interface RegisterApiService {
         const val BASE = "register"
     }
 
-    @GET(BASE)
+    @GET("$BASE/username")
     suspend fun getAvailableUsername(
         @Query("username") username: String
     ): ApiResponseDto<Boolean>?

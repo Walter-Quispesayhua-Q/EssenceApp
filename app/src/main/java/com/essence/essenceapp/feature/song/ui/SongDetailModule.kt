@@ -6,6 +6,8 @@ import com.essence.essenceapp.feature.song.domain.repository.SongRepository
 import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
+import com.essence.essenceapp.feature.song.domain.usecase.RefreshStreamingUrlUseCase
+import com.essence.essenceapp.shared.streaming.StreamingUrlSyncManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,12 +26,19 @@ object SongDetailModule {
 
     @Provides
     @Singleton
-    fun provideSongRepository(apiService: SongApiService): SongRepository =
-        SongRepositoryImpl(apiService)
+    fun provideSongRepository(
+        apiService: SongApiService,
+        streamingUrlSyncManager: StreamingUrlSyncManager
+    ): SongRepository =
+        SongRepositoryImpl(apiService, streamingUrlSyncManager)
 
     @Provides
     fun provideGetSongUseCase(repo: SongRepository): GetSongUseCase =
         GetSongUseCase(repo)
+
+    @Provides
+    fun provideRefreshStreamingUrlUseCase(repo: SongRepository): RefreshStreamingUrlUseCase =
+        RefreshStreamingUrlUseCase(repo)
 
     @Provides
     fun provideAddLikeSongUseCase(repo: SongRepository): AddLikeSongUseCase =

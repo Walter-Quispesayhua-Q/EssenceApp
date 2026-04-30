@@ -3,6 +3,7 @@ package com.essence.essenceapp.feature.song.domain.model
 import com.essence.essenceapp.feature.album.domain.model.AlbumSimple
 import com.essence.essenceapp.feature.artist.domain.model.ArtistSimple
 import java.time.LocalDate
+import java.time.Instant
 
 data class Song(
     val id: Long,
@@ -15,5 +16,7 @@ data class Song(
     val artists: List<ArtistSimple>,
     val album: AlbumSimple?,
     val releaseDate: LocalDate?,
-    val isLiked: Boolean
+    val isLiked: Boolean,
+    val streamingUrl: String?,
+    val streamingUrlExpiresAt: Instant?
 )

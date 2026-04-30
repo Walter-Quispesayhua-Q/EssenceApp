@@ -6,6 +6,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface HistoryApiService {
 
@@ -18,5 +19,7 @@ interface HistoryApiService {
         @Path("songId") songId: Long, @Body historyApiDTO: HistoryApiDTO)
 
     @GET(BASE)
-    suspend fun getSongsOfHistory(): List<SongResponseSimpleApiDTO>?
+    suspend fun getSongsOfHistory(
+        @Query("limit") limit: Int? = null
+    ): List<SongResponseSimpleApiDTO>?
 }

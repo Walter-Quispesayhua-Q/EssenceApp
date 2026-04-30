@@ -2,7 +2,7 @@ package com.essence.essenceapp.feature.auth.login.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.essence.essenceapp.core.network.storage.TokenManager
+import com.essence.essenceapp.core.storage.TokenManager
 import com.essence.essenceapp.feature.auth.login.domain.model.Login
 import com.essence.essenceapp.feature.auth.login.domain.usecase.LoginUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel

@@ -22,7 +22,7 @@ class LoginUseCase(
             Result.success(token)
         } else {
             Result.failure(
-                Exception("Error al iniciar sesión")
+                Exception("Credenciales incorrectas o el usuario no existe")
             )
         }
     }

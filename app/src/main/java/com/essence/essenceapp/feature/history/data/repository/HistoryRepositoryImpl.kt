@@ -6,9 +6,11 @@ import com.essence.essenceapp.feature.history.domain.model.History
 import com.essence.essenceapp.feature.history.domain.repository.HistoryRepository
 import com.essence.essenceapp.feature.song.data.mapper.songToSimpleDomain
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
+import com.essence.essenceapp.shared.cache.QueueCache
 
 class HistoryRepositoryImpl(
-    private val apiService: HistoryApiService
+    private val apiService: HistoryApiService,
+    private val queueCache: QueueCache
 ): HistoryRepository {
 
     override suspend fun addSongHistory(
@@ -19,8 +21,12 @@ class HistoryRepositoryImpl(
         apiService.addSongHistory(songId,request)
     }
 
-    override suspend fun getSongsOfHistory(): List<SongSimple>? {
-        val response = apiService.getSongsOfHistory()
-        return response?.mapNotNull { it.songToSimpleDomain() }
+    override suspend fun getSongsOfHistory(limit: Int?): List<SongSimple>? {
+        val response = apiService.getSongsOfHistory(limit)
+        val mapped = response?.mapNotNull { it.songToSimpleDomain() }
+        if (limit == null) {
+            mapped?.let { queueCache.set("history", it) }
+        }
+        return mapped
     }
 }

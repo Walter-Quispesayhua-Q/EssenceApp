@@ -5,4 +5,10 @@
         <item name="android:windowBackground">@color/midnight_black</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
+
+    <style name="Theme.EssenceApp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/midnight_black</item>
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="postSplashScreenTheme">@style/Theme.EssenceApp</item>
+    </style>
 </resources>

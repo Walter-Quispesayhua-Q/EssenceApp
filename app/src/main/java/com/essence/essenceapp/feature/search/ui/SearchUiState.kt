@@ -21,6 +21,10 @@ sealed interface SearchUiState {
 
     data class Success(
         val form: SearchFormState,
-        val results: Search
-    ) : SearchUiState
+        val results: Search,
+        val page: Int = 0,
+        val isLoadingNextPage: Boolean = false
+    ) : SearchUiState {
+        val hasFilter: Boolean get() = form.type.isNotBlank()
+    }
 }

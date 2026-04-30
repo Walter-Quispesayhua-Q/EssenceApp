@@ -9,7 +9,8 @@ sealed interface HomeUiState {
 
     data class Success(
         val homeData: Home,
-        val recentSongs: List<SongSimple> = emptyList()
+        val recentSongs: List<SongSimple> = emptyList(),
+        val isRefreshing: Boolean = false
     ) : HomeUiState
 
     data class Error(

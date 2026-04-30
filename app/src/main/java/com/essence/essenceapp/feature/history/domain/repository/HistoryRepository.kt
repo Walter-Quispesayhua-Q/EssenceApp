@@ -5,5 +5,5 @@ import com.essence.essenceapp.feature.song.domain.model.SongSimple
 
 interface HistoryRepository {
     suspend fun addSongHistory(songId: Long, history: History)
-    suspend fun getSongsOfHistory(): List<SongSimple>?
+    suspend fun getSongsOfHistory(limit: Int? = null): List<SongSimple>?
 }
