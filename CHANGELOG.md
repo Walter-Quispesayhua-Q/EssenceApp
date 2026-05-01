@@ -6,6 +6,23 @@ El formato sigue el estándar [Keep a Changelog](https://keepachangelog.com/es-E
 
 ---
 
+## [1.0.1] — Mejora del registro de historial
+
+### Cambios
+
+- **Historial de reproducción más oportuno**: el POST al backend ahora se dispara automáticamente al alcanzar 60 segundos de reproducción, en lugar de esperar al final de la canción. Mejora la experiencia cuando el usuario salta de canción tras escuchar lo suficiente.
+- Mantiene el comportamiento de fallback `recordCompleted` para canciones más cortas que 60 segundos.
+
+### Documentación
+
+- Reestructura completa: el `README.md` ahora es presentación pura con badges profesionales.
+- Nueva carpeta `docs/` con `ARCHITECTURE.md`, `BUILD.md`, `BACKEND.md`, `ROADMAP.md` y `SECURITY.md`.
+- Nuevo `CHANGELOG.md` siguiendo el formato Keep a Changelog.
+- Nuevo `CONTRIBUTING.md` con guía de bugs, PRs y áreas prioritarias (modo offline y descargas destacadas).
+- `docs/BACKEND.md` simplificado para no exponer detalles internos de infraestructura.
+
+---
+
 ## [1.0.0] — Primera versión pública
 
 ### Reproducción de audio
@@ -69,4 +86,5 @@ El formato sigue el estándar [Keep a Changelog](https://keepachangelog.com/es-E
 
 ---
 
+[1.0.1]: https://github.com/Walter-Quispesayhua-Q/EssenceApp/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Walter-Quispesayhua-Q/EssenceApp/releases/tag/v1.0.0

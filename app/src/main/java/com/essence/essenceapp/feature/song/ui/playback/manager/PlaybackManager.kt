@@ -132,6 +132,16 @@ class PlaybackManager @Inject constructor(
             audioPlayerEngine.state.collect { audioState ->
                 lastPositionMs = audioState.positionMs
 
+                if (
+                    !historyRecorder.isAlreadyRecorded() &&
+                    historyRecorder.hasReachedListenThreshold(lastPositionMs)
+                ) {
+                    val info = _nowPlaying.value
+                    if (info != null) {
+                        historyRecorder.recordListened(info.songId, lastPositionMs)
+                    }
+                }
+
                 if (audioState.hasEnded && !historyRecorder.isAlreadyRecorded()) {
                     val info = _nowPlaying.value
                     if (info != null) {

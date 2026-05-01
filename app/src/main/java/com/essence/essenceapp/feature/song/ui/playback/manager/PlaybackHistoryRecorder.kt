@@ -34,6 +34,17 @@ class PlaybackHistoryRecorder @Inject constructor(
 
     fun shouldRecordOnSwitch(positionMs: Long): Boolean = positionMs >= MIN_LISTEN_MS
 
+    fun hasReachedListenThreshold(positionMs: Long): Boolean = positionMs >= MIN_LISTEN_MS
+
+    fun recordListened(songId: Long, durationListenedMs: Long) {
+        record(
+            songId = songId,
+            durationListenedMs = durationListenedMs,
+            completed = false,
+            skipped = false
+        )
+    }
+
     fun recordCompleted(songId: Long, durationListenedMs: Long) {
         record(
             songId = songId,
