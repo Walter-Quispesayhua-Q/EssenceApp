@@ -23,6 +23,9 @@ class SessionManager @Inject constructor(
     private val _sessionExpiredEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val sessionExpiredEvents: SharedFlow<Unit> = _sessionExpiredEvents.asSharedFlow()
 
+    private val _authRequiredEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val authRequiredEvents: SharedFlow<Unit> = _authRequiredEvents.asSharedFlow()
+
     fun onSessionExpired() {
         if (!isHandlingExpiration.compareAndSet(false, true)) return
 
@@ -31,5 +34,9 @@ class SessionManager @Inject constructor(
             _sessionExpiredEvents.emit(Unit)
             isHandlingExpiration.set(false)
         }
+    }
+
+    fun onAuthRequired() {
+        _authRequiredEvents.tryEmit(Unit)
     }
 }

@@ -119,6 +119,9 @@ class PlaybackManager @Inject constructor(
     private var pendingNavigationJob: Job? = null
     private var lastNavigationTime: Long = 0L
 
+    @Volatile
+    private var pauseRequestedDuringLoad: Boolean = false
+
     private fun recordSkippedForCurrentIfNeeded(nextLookup: String) {
         val current = _nowPlaying.value ?: return
         if (current.songLookup == nextLookup) return
@@ -254,8 +257,11 @@ class PlaybackManager @Inject constructor(
             artworkUri = resolveImageUrl(info.imageKey),
             mediaId = info.songLookup
         )
+        if (pauseRequestedDuringLoad) {
+            pauseRequestedDuringLoad = false
+            audioPlayerEngine.pause()
+        }
         startMediaService()
-        mediaPrefetcher.prefetch(info.streamingUrl)
         prefetchNextSong()
     }
 
@@ -286,13 +292,19 @@ class PlaybackManager @Inject constructor(
     fun onAction(action: PlaybackAction) {
         when (action) {
             PlaybackAction.Play -> {
+                pauseRequestedDuringLoad = false
                 if (uiState.value.errorMessage != null) {
                     replayCurrentSong()
                 } else {
                     audioPlayerEngine.resume()
                 }
             }
-            PlaybackAction.Pause -> audioPlayerEngine.pause()
+            PlaybackAction.Pause -> {
+                if (uiState.value.isBuffering) {
+                    pauseRequestedDuringLoad = true
+                }
+                audioPlayerEngine.pause()
+            }
             PlaybackAction.Stop -> clearNowPlaying()
             PlaybackAction.Next -> goNext()
             PlaybackAction.Previous -> goPrevious()
@@ -473,7 +485,11 @@ class PlaybackManager @Inject constructor(
         prefetchJob?.cancel()
         val nextItem = queueController.peekNext() ?: return
         val cached = resolvedSongs[nextItem.songLookup]
-        if (cached != null && !isStreamingUrlExpired(cached)) return
+
+        if (cached != null && !isStreamingUrlExpired(cached)) {
+            prefetchAudio(cached)
+            return
+        }
 
         prefetchJob = scope.launch {
             try {
@@ -485,6 +501,7 @@ class PlaybackManager @Inject constructor(
                 result.onSuccess { song ->
                     resolvedSongs[nextItem.songLookup] = song
                     Log.d(PLAYBACK_TAG, "Prefetch OK: ${nextItem.songLookup}")
+                    prefetchAudio(song)
                 }
                 result.onFailure { error ->
                     Log.w(PLAYBACK_TAG, "Prefetch fallo (no critico) ${nextItem.songLookup}: ${error.message}")
@@ -495,6 +512,12 @@ class PlaybackManager @Inject constructor(
                 Log.w(PLAYBACK_TAG, "Prefetch exception (no critico) ${nextItem.songLookup}: ${e.message}")
             }
         }
+    }
+
+    private fun prefetchAudio(song: Song) {
+        val url = song.streamingUrl ?: return
+        if (url.isBlank()) return
+        mediaPrefetcher.prefetch(url)
     }
 
     private suspend fun handleSourceRefresh(lookup: String) {

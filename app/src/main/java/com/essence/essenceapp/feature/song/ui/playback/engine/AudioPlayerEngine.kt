@@ -8,6 +8,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import com.essence.essenceapp.core.network.auth.SessionManager
 import com.essence.essenceapp.feature.song.ui.playback.AudioPlayerState
 import com.essence.essenceapp.feature.song.ui.playback.PlaybackRepeatMode
 import com.essence.essenceapp.feature.song.ui.playback.artwork.FallbackArtworkProvider
@@ -74,7 +75,8 @@ private const val RETRY_DELAY_MS = 1_000L
 @Singleton
 class AudioPlayerEngine @Inject constructor(
     private val exoPlayerFactory: ExoPlayerFactory,
-    private val fallbackArtworkProvider: FallbackArtworkProvider
+    private val fallbackArtworkProvider: FallbackArtworkProvider,
+    private val sessionManager: SessionManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -268,6 +270,12 @@ class AudioPlayerEngine @Inject constructor(
         return httpError.responseCode in setOf(403, 410)
     }
 
+    private fun isUnauthorizedHttpError(error: PlaybackException): Boolean {
+        if (error.errorCode != PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) return false
+        val httpError = error.cause as? HttpDataSource.InvalidResponseCodeException ?: return false
+        return httpError.responseCode == 401
+    }
+
     fun clearSourceRefreshRequest() {
         _state.value = _state.value.copy(
             requiresSourceRefresh = false,
@@ -332,6 +340,18 @@ class AudioPlayerEngine @Inject constructor(
                                 "(retry $retryCount/$MAX_RETRY_COUNT)",
                         error
                     )
+
+                    if (isUnauthorizedHttpError(error)) {
+                        Log.d(AUDIO_TAG, "HLS 401 detected, signaling sessionExpired")
+                        _state.value = _state.value.copy(
+                            isPlaying = false,
+                            isBuffering = false,
+                            repeatMode = repeatMode,
+                            errorMessage = "Tu sesión ha expirado."
+                        )
+                        sessionManager.onSessionExpired()
+                        return
+                    }
 
                     if (isExpiredStreamError(error)) {
                         Log.d(AUDIO_TAG, "Expired stream detected, requesting source refresh")

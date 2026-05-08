@@ -124,10 +124,10 @@ class ExoPlayerFactory @Inject constructor(
         // ── Buffer conservador para audio (doc recomienda 1000/2000 como mínimo) ──
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                20_000,  // minBufferMs
-                50_000,  // maxBufferMs
-                2_500,   // bufferForPlaybackMs
-                5_000    // bufferForPlaybackAfterRebufferMs
+                30_000,  // minBufferMs
+                60_000,  // maxBufferMs
+                5_000,   // bufferForPlaybackMs
+                8_000    // bufferForPlaybackAfterRebufferMs
             )
             .build()
 

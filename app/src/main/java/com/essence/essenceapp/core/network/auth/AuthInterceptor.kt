@@ -4,11 +4,15 @@ import com.essence.essenceapp.core.storage.TokenManager
 import javax.inject.Inject
 import javax.inject.Singleton
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.Protocol
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 
 @Singleton
 class AuthInterceptor @Inject constructor(
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val sessionManager: SessionManager
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -21,12 +25,23 @@ class AuthInterceptor @Inject constructor(
 
         val token = tokenManager.getCachedToken()
         if (token.isNullOrBlank()) {
-            return chain.proceed(request)
+            sessionManager.onAuthRequired()
+            return Response.Builder()
+                .request(request)
+                .protocol(Protocol.HTTP_1_1)
+                .code(401)
+                .message("Auth required (synthetic)")
+                .body("""{"error":"auth_required"}""".toResponseBody(JSON_MEDIA_TYPE))
+                .build()
         }
 
         val authenticated = request.newBuilder()
             .addHeader("Authorization", "Bearer $token")
             .build()
         return chain.proceed(authenticated)
+    }
+
+    private companion object {
+        val JSON_MEDIA_TYPE = "application/json".toMediaTypeOrNull()
     }
 }

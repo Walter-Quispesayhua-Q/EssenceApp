@@ -346,7 +346,7 @@ fun PlaybackManagerContent(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onAction(
-                                    if (state.isPlaying) PlaybackAction.Pause
+                                    if (state.isPlaying || state.isBuffering) PlaybackAction.Pause
                                     else PlaybackAction.Play
                                 )
                             },
@@ -584,7 +584,7 @@ private fun PlayPauseButton(
             color = accentColor,
             shadowElevation = 12.dp
         ) {
-            IconButton(onClick = onClick, enabled = !isBuffering) {
+            IconButton(onClick = onClick) {
                 if (isBuffering) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(iconSize),

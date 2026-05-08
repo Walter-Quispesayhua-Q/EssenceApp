@@ -45,9 +45,7 @@ fun MainTabsNavHost(
 
         searchGraph(
             navController = navController,
-            playbackManager = playbackManager,
-            isLoggedIn = isLoggedIn,
-            onRequireAuth = onRequireAuth
+            playbackManager = playbackManager
         )
 
         playlistGraph(
@@ -58,9 +56,7 @@ fun MainTabsNavHost(
         profileGraph()
 
         songGraph(
-            navController = navController,
-            isLoggedIn = isLoggedIn,
-            onRequireAuth = onRequireAuth
+            navController = navController
         )
 
         artistGraph(

@@ -43,7 +43,7 @@ class MediaAudioCache @Inject constructor(
     companion object {
         private const val CACHE_DIR_NAME = "media_cache"
 
-        // Tamano maximo del cache: 100 MB.
-        private const val MAX_BYTES = 100L * 1024L * 1024L
+        // Tamano maximo del cache: 200 MB.
+        private const val MAX_BYTES = 200L * 1024L * 1024L
     }
 }

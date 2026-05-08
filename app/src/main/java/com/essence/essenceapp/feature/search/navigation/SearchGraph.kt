@@ -13,9 +13,7 @@ import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.searchGraph(
     navController: NavController,
-    playbackManager: PlaybackManager,
-    isLoggedIn: Boolean,
-    onRequireAuth: () -> Unit
+    playbackManager: PlaybackManager
 ) {
     navigation(
         route = SearchGraphRoutes.SEARCH_GRAPH,
@@ -25,16 +23,12 @@ fun NavGraphBuilder.searchGraph(
             OffscreenSurface {
                 SearchScreen(
                     onOpenSong = { request ->
-                        if (isLoggedIn) {
-                            playbackManager.setQueueFromItems(
-                                items = request.queue,
-                                startIndex = request.startIndex,
-                                sourceKey = request.sourceKey
-                            )
-                            navController.navigate(SongRoutes.detail(request.songLookup))
-                        } else {
-                            onRequireAuth()
-                        }
+                        playbackManager.setQueueFromItems(
+                            items = request.queue,
+                            startIndex = request.startIndex,
+                            sourceKey = request.sourceKey
+                        )
+                        navController.navigate(SongRoutes.detail(request.songLookup))
                     },
                     onOpenAlbum = { albumLookup ->
                         navController.navigate(AlbumRoutes.detail(albumLookup))

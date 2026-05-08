@@ -26,9 +26,13 @@ class MainShellViewModel @Inject constructor(
     private val _sessionExpiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val sessionExpiredEvent = _sessionExpiredEvent.asSharedFlow()
 
+    private val _authRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val authRequiredEvent = _authRequiredEvent.asSharedFlow()
+
     init {
         observeAuthState()
         observeSessionExpiration()
+        observeAuthRequired()
     }
 
     private fun observeAuthState() {
@@ -43,6 +47,14 @@ class MainShellViewModel @Inject constructor(
         viewModelScope.launch {
             sessionManager.sessionExpiredEvents.collectLatest {
                 _sessionExpiredEvent.emit(Unit)
+            }
+        }
+    }
+
+    private fun observeAuthRequired() {
+        viewModelScope.launch {
+            sessionManager.authRequiredEvents.collectLatest {
+                _authRequiredEvent.emit(Unit)
             }
         }
     }

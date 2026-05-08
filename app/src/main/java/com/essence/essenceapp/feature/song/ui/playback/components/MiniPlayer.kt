@@ -501,7 +501,7 @@ private fun MiniPlayPauseButton(
         color = color,
         shadowElevation = 6.dp
     ) {
-        IconButton(onClick = onClick, enabled = !isBuffering) {
+        IconButton(onClick = onClick) {
             if (isBuffering) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(iconSize),

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -108,6 +109,11 @@ class SearchViewModel @Inject constructor(
                     updateEditing {
                         it.copy(isSubmitting = false, errorMessage = error.toUserMessage())
                     }
+                }
+            }
+            .catch { error ->
+                updateEditing {
+                    it.copy(isSubmitting = false, errorMessage = error.toUserMessage())
                 }
             }
             .launchIn(viewModelScope)

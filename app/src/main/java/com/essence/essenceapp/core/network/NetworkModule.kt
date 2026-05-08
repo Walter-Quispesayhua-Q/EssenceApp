@@ -3,9 +3,12 @@ package com.essence.essenceapp.core.network
 import android.content.Context
 import com.essence.essenceapp.BuildConfig
 import com.essence.essenceapp.core.network.auth.AuthInterceptor
+import com.essence.essenceapp.core.network.auth.SessionManager
 import com.essence.essenceapp.core.network.auth.UnauthorizedInterceptor
 import com.essence.essenceapp.core.network.interceptor.RetryInterceptor
 import com.essence.essenceapp.core.network.interceptor.UserAgentInterceptor
+import com.essence.essenceapp.core.network.qualifier.BaseOkHttpClient
+import com.essence.essenceapp.core.network.qualifier.NewPipeOkHttpClient
 import com.essence.essenceapp.core.network.security.NetworkSecurity
 import com.essence.essenceapp.core.storage.TokenManager
 import com.google.gson.Gson
@@ -43,6 +46,10 @@ private const val CALL_TIMEOUT_S = 75L
 private const val CONNECTION_POOL_MAX_IDLE = 8
 private const val CONNECTION_POOL_KEEP_ALIVE_MIN = 5L
 
+private const val NEWPIPE_CONNECT_TIMEOUT_S = 8L
+private const val NEWPIPE_READ_TIMEOUT_S = 15L
+private const val NEWPIPE_WRITE_TIMEOUT_S = 15L
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
@@ -55,8 +62,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAuthInterceptor(tokenManager: TokenManager): AuthInterceptor {
-        return AuthInterceptor(tokenManager)
+    fun provideAuthInterceptor(
+        tokenManager: TokenManager,
+        sessionManager: SessionManager
+    ): AuthInterceptor {
+        return AuthInterceptor(tokenManager, sessionManager)
     }
 
     @Provides
@@ -89,20 +99,33 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        cache: Cache,
+    @BaseOkHttpClient
+    fun provideBaseOkHttpClient(
         connectionPool: ConnectionPool,
-        userAgentInterceptor: UserAgentInterceptor,
-        authInterceptor: AuthInterceptor,
-        unauthorizedInterceptor: UnauthorizedInterceptor,
-        retryInterceptor: RetryInterceptor,
         loggingInterceptor: HttpLoggingInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
-            .cache(cache)
             .connectionPool(connectionPool)
-            .certificatePinner(NetworkSecurity.buildPinner())
             .retryOnConnectionFailure(true)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        @BaseOkHttpClient baseClient: OkHttpClient,
+        cache: Cache,
+        userAgentInterceptor: UserAgentInterceptor,
+        authInterceptor: AuthInterceptor,
+        unauthorizedInterceptor: UnauthorizedInterceptor,
+        retryInterceptor: RetryInterceptor
+    ): OkHttpClient {
+        return baseClient.newBuilder()
+            .cache(cache)
+            .certificatePinner(NetworkSecurity.buildPinner())
             .connectTimeout(CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_S, TimeUnit.SECONDS)
             .writeTimeout(WRITE_TIMEOUT_S, TimeUnit.SECONDS)
@@ -111,7 +134,19 @@ object NetworkModule {
             .addInterceptor(authInterceptor)
             .addInterceptor(unauthorizedInterceptor)
             .addInterceptor(retryInterceptor)
-            .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @NewPipeOkHttpClient
+    fun provideNewPipeOkHttpClient(
+        @BaseOkHttpClient baseClient: OkHttpClient
+    ): OkHttpClient {
+        return baseClient.newBuilder()
+            .connectTimeout(NEWPIPE_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
+            .readTimeout(NEWPIPE_READ_TIMEOUT_S, TimeUnit.SECONDS)
+            .writeTimeout(NEWPIPE_WRITE_TIMEOUT_S, TimeUnit.SECONDS)
             .build()
     }
 

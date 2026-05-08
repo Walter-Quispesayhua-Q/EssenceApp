@@ -1,6 +1,8 @@
 package com.essence.essenceapp
 
 import android.app.Application
+import com.essence.essenceapp.core.extractor.NewPipeInitializer
+import com.essence.essenceapp.core.network.qualifier.NewPipeOkHttpClient
 import com.essence.essenceapp.feature.song.ui.playback.engine.MediaAudioCache
 import com.essence.essenceapp.ui.resilience.GlobalExceptionHandler
 import dagger.hilt.EntryPoint
@@ -8,6 +10,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import okhttp3.OkHttpClient
 
 @HiltAndroidApp
 class EssenceApp : Application() {
@@ -28,6 +34,13 @@ class EssenceApp : Application() {
         fun globalExceptionHandler(): GlobalExceptionHandler
     }
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface NewPipeNetworkEntryPoint {
+        @NewPipeOkHttpClient
+        fun newPipeOkHttpClient(): OkHttpClient
+    }
+
     private val mediaAudioCache: MediaAudioCache by lazy {
         EntryPointAccessors.fromApplication(
             this,
@@ -42,9 +55,20 @@ class EssenceApp : Application() {
         ).globalExceptionHandler()
     }
 
+    private val newPipeOkHttpClient: OkHttpClient by lazy {
+        EntryPointAccessors.fromApplication(
+            this,
+            NewPipeNetworkEntryPoint::class.java
+        ).newPipeOkHttpClient()
+    }
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         globalExceptionHandler.installAsDefault()
+        NewPipeInitializer.setOkHttpClient(newPipeOkHttpClient)
+        NewPipeInitializer.warmUp(appScope)
     }
 
     override fun onTrimMemory(level: Int) {

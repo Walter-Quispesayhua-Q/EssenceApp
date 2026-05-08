@@ -81,6 +81,17 @@ fun MainShellScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        shellViewModel.authRequiredEvent.collectLatest {
+            launch {
+                snackbarHostState.showSnackbar(
+                    message = "Inicia sesión para continuar."
+                )
+            }
+            onRequireAuth()
+        }
+    }
+
     val bottomBarItems = TopLevelDestinations.itemsFor(isLoggedIn)
     val selectedTopLevelGraphRoute = resolveSelectedTopLevelGraphRoute(
         currentDestination = navBackStackEntry?.destination,
@@ -147,7 +158,7 @@ fun MainShellScreen(
                                     playback = playback,
                                     onTogglePlay = {
                                         playbackManager.onAction(
-                                            if (playback.isPlaying) {
+                                            if (playback.isPlaying || playback.isBuffering) {
                                                 PlaybackAction.Pause
                                             } else {
                                                 PlaybackAction.Play

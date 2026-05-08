@@ -12,8 +12,9 @@ class SearchUseCase(
         page: Int = 0
     ): Result<Search> {
         if (query.isBlank()) return Result.failure(Exception("Escribe algo para buscar"))
-        val response = searchRepository.search(query, type, page)
-        return if (response != null) Result.success(response)
-        else Result.failure(Exception("Error en la busqueda"))
+        return runCatching {
+            searchRepository.search(query, type, page)
+                ?: throw Exception("Error en la busqueda")
+        }
     }
 }

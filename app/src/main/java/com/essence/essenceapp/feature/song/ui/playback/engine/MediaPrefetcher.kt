@@ -17,6 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 private const val TAG = "MEDIA_PREFETCH"
+private const val DEFAULT_PREFETCH_BYTES = 5L * 1024L * 1024L
 
 @Singleton
 @OptIn(UnstableApi::class)
@@ -33,7 +34,7 @@ class MediaPrefetcher @Inject constructor(
 
     private var currentJob: Job? = null
 
-    fun prefetch(url: String) {
+    fun prefetch(url: String, maxBytes: Long = DEFAULT_PREFETCH_BYTES) {
         if (url.isBlank()) return
         if (currentUrl == url && currentJob?.isActive == true) return
 
@@ -44,12 +45,14 @@ class MediaPrefetcher @Inject constructor(
 
         currentJob = scope.launch {
             try {
-                Log.d(TAG, "Iniciando prefetch: $targetUrl")
+                Log.d(TAG, "Iniciando prefetch (maxBytes=$maxBytes): $targetUrl")
                 val useAuthHeader = cacheDataSourceProvider.shouldAttachAuthHeader(targetUrl)
                 val factory = cacheDataSourceProvider.createFactory(useAuthHeader)
                 val cacheDataSource = factory.createDataSource() as CacheDataSource
                 val dataSpec = DataSpec.Builder()
                     .setUri(Uri.parse(targetUrl))
+                    .setPosition(0)
+                    .setLength(maxBytes)
                     .setFlags(DataSpec.FLAG_ALLOW_CACHE_FRAGMENTATION)
                     .build()
 
