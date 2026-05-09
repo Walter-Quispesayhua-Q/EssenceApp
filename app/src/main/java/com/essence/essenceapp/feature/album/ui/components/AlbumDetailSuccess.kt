@@ -20,6 +20,7 @@ import com.essence.essenceapp.ui.theme.MidnightBlack
 internal fun AlbumDetailSuccess(
     album: Album,
     isLikeSubmitting: Boolean,
+    isLoggedIn: Boolean,
     onAction: (AlbumDetailAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -92,6 +93,7 @@ internal fun AlbumDetailSuccess(
                 } else {
                     AlbumTracksIsland(
                         songs = songs,
+                        isLoggedIn = isLoggedIn,
                         onOpenSong = { onAction(AlbumDetailAction.OpenSong(it)) },
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )

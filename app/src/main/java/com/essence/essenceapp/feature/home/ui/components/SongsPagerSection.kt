@@ -29,6 +29,8 @@ import com.essence.essenceapp.shared.playback.model.PlaybackQueueItem
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.draw.alpha
+import com.essence.essenceapp.shared.ui.components.auth.GuestPlaybackHint
 import com.essence.essenceapp.shared.ui.components.badges.RankBadge
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
 import com.essence.essenceapp.ui.theme.LuxeGold
@@ -76,6 +78,7 @@ fun SongsPagerSection(
     sourceKey: String,
     accent: Color,
     onOpenSong: (PlaybackOpenRequest) -> Unit,
+    isLoggedIn: Boolean,
     modifier: Modifier = Modifier,
     pageSize: Int = 5,
     showRank: Boolean = false
@@ -86,6 +89,12 @@ fun SongsPagerSection(
     val queueItems = remember(songs) { songs.toQueueItems() }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        if (!isLoggedIn) {
+            GuestPlaybackHint(
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
+
         if (pages.size > 1) {
             val pagerState = rememberPagerState(pageCount = { pages.size })
 
@@ -104,6 +113,7 @@ fun SongsPagerSection(
                     sourceKey = sourceKey,
                     queueItems = queueItems,
                     showRank = showRank,
+                    isLoggedIn = isLoggedIn,
                     onOpenSong = onOpenSong
                 )
             }
@@ -123,6 +133,7 @@ fun SongsPagerSection(
                 sourceKey = sourceKey,
                 queueItems = queueItems,
                 showRank = showRank,
+                isLoggedIn = isLoggedIn,
                 onOpenSong = onOpenSong,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
@@ -137,9 +148,12 @@ private fun SongsPage(
     sourceKey: String,
     queueItems: List<PlaybackQueueItem>,
     showRank: Boolean,
+    isLoggedIn: Boolean,
     onOpenSong: (PlaybackOpenRequest) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val rowAlpha = if (isLoggedIn) 1f else 0.45f
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -155,6 +169,7 @@ private fun SongsPage(
                     .let { mod ->
                         if (rowBrush != null) mod.background(brush = rowBrush) else mod
                     }
+                    .alpha(rowAlpha)
                     .clickable {
                         onOpenSong(
                             PlaybackOpenRequest(

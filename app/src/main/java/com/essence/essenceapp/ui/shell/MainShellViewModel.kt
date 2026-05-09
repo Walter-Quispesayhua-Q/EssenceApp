@@ -29,10 +29,17 @@ class MainShellViewModel @Inject constructor(
     private val _authRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val authRequiredEvent = _authRequiredEvent.asSharedFlow()
 
+    private val _guestPlayEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val guestPlayEvent = _guestPlayEvent.asSharedFlow()
+
     init {
         observeAuthState()
         observeSessionExpiration()
         observeAuthRequired()
+    }
+
+    fun notifyGuestPlayAttempt() {
+        _guestPlayEvent.tryEmit(Unit)
     }
 
     private fun observeAuthState() {

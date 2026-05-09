@@ -107,6 +107,11 @@ class HomeViewModel @Inject constructor(
 
     fun refreshHistory() {
         viewModelScope.launch {
+            val token = runCatching { tokenManager.token.first() }.getOrNull()
+            if (token.isNullOrBlank()) {
+                recentSongs.value = emptyList()
+                return@launch
+            }
             runCatching { getSongsOfHistoryUseCase(limit = HOME_HISTORY_LIMIT) }
                 .getOrNull()
                 ?.onSuccess { songs -> recentSongs.value = songs }

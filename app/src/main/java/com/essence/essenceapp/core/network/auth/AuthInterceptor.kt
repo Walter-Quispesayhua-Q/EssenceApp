@@ -25,7 +25,9 @@ class AuthInterceptor @Inject constructor(
 
         val token = tokenManager.getCachedToken()
         if (token.isNullOrBlank()) {
-            sessionManager.onAuthRequired()
+            if (!AuthRoutePolicy.isAuthRoute(path)) {
+                sessionManager.onAuthRequired()
+            }
             return Response.Builder()
                 .request(request)
                 .protocol(Protocol.HTTP_1_1)

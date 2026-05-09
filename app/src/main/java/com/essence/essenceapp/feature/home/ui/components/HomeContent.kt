@@ -146,7 +146,8 @@ private fun HomeSuccessContent(
                         songs = recentSongs.take(MAX_HOME_ITEMS),
                         sourceKey = "home:recent",
                         accent = MutedTeal,
-                        onOpenSong = onOpenSong
+                        onOpenSong = onOpenSong,
+                        isLoggedIn = isLoggedIn
                     )
                 }
             }
@@ -162,6 +163,7 @@ private fun HomeSuccessContent(
                         sourceKey = "home:top",
                         accent = SoftRose,
                         onOpenSong = onOpenSong,
+                        isLoggedIn = isLoggedIn,
                         showRank = true
                     )
                 }

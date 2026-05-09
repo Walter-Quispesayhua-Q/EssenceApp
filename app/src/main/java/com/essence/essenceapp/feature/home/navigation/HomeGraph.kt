@@ -19,7 +19,8 @@ fun NavGraphBuilder.homeGraph(
     navController: NavController,
     playbackManager: PlaybackManager,
     isLoggedIn: Boolean,
-    onRequireAuth: () -> Unit
+    onRequireAuth: () -> Unit,
+    onGuestPlayAttempt: () -> Unit
 ) {
     navigation(
         route = HomeGraphRoutes.HOME_GRAPH,
@@ -48,16 +49,16 @@ fun NavGraphBuilder.homeGraph(
                 isLoggedIn = isLoggedIn,
                 onLoginClick = onRequireAuth,
                 onOpenSong = { request ->
-                    if (isLoggedIn) {
-                        playbackManager.setQueueFromItems(
-                            items = request.queue,
-                            startIndex = request.startIndex,
-                            sourceKey = request.sourceKey
-                        )
-                        navController.navigate(SongRoutes.detail(request.songLookup))
-                    } else {
-                        onRequireAuth()
+                    if (!isLoggedIn) {
+                        onGuestPlayAttempt()
+                        return@HomeScreen
                     }
+                    playbackManager.setQueueFromItems(
+                        items = request.queue,
+                        startIndex = request.startIndex,
+                        sourceKey = request.sourceKey
+                    )
+                    navController.navigate(SongRoutes.detail(request.songLookup))
                 },
                 onOpenAlbum = { albumLookup ->
                     navController.navigate(AlbumRoutes.detail(albumLookup))

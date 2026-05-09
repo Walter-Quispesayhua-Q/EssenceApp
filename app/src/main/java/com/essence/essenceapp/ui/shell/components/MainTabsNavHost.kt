@@ -25,7 +25,8 @@ fun MainTabsNavHost(
     modifier: Modifier = Modifier,
     playbackManager: PlaybackManager,
     isLoggedIn: Boolean,
-    onRequireAuth: () -> Unit
+    onRequireAuth: () -> Unit,
+    onGuestPlayAttempt: () -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -40,12 +41,15 @@ fun MainTabsNavHost(
             navController = navController,
             playbackManager = playbackManager,
             isLoggedIn = isLoggedIn,
-            onRequireAuth = onRequireAuth
+            onRequireAuth = onRequireAuth,
+            onGuestPlayAttempt = onGuestPlayAttempt
         )
 
         searchGraph(
             navController = navController,
-            playbackManager = playbackManager
+            playbackManager = playbackManager,
+            isLoggedIn = isLoggedIn,
+            onGuestPlayAttempt = onGuestPlayAttempt
         )
 
         playlistGraph(
@@ -56,16 +60,22 @@ fun MainTabsNavHost(
         profileGraph()
 
         songGraph(
-            navController = navController
+            navController = navController,
+            isLoggedIn = isLoggedIn,
+            onRequireAuth = onRequireAuth
         )
 
         artistGraph(
             navController = navController,
-            playbackManager = playbackManager
+            playbackManager = playbackManager,
+            isLoggedIn = isLoggedIn,
+            onGuestPlayAttempt = onGuestPlayAttempt
         )
         albumGraph(
             navController = navController,
-            playbackManager = playbackManager
+            playbackManager = playbackManager,
+            isLoggedIn = isLoggedIn,
+            onGuestPlayAttempt = onGuestPlayAttempt
         )
 
         historyGraph(

@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +91,22 @@ fun MainShellScreen(
                 )
             }
             onRequireAuth()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        shellViewModel.guestPlayEvent.collectLatest {
+            launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = "Inicia sesión para reproducir música",
+                    actionLabel = "Iniciar sesión",
+                    withDismissAction = true,
+                    duration = SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    onRequireAuth()
+                }
+            }
         }
     }
 
@@ -226,7 +244,8 @@ fun MainShellScreen(
                         modifier = Modifier.fillMaxSize(),
                         playbackManager = playbackManager,
                         isLoggedIn = isLoggedIn,
-                        onRequireAuth = onRequireAuth
+                        onRequireAuth = onRequireAuth,
+                        onGuestPlayAttempt = shellViewModel::notifyGuestPlayAttempt
                     )
                 }
             }

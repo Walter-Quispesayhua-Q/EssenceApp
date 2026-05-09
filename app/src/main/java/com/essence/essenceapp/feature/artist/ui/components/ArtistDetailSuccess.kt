@@ -25,6 +25,7 @@ import com.essence.essenceapp.ui.theme.SoftRose
 internal fun ArtistDetailSuccess(
     artist: Artist,
     isLikeSubmitting: Boolean,
+    isLoggedIn: Boolean,
     onAction: (ArtistDetailAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -102,6 +103,7 @@ internal fun ArtistDetailSuccess(
                 } else {
                     ArtistTracksIsland(
                         songs = songs,
+                        isLoggedIn = isLoggedIn,
                         onOpenSong = { onAction(ArtistDetailAction.OpenSong(it)) },
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )

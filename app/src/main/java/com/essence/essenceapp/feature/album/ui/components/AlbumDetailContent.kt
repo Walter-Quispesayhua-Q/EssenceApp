@@ -15,6 +15,7 @@ import com.essence.essenceapp.ui.theme.MidnightBlack
 fun AlbumDetailContent(
     modifier: Modifier = Modifier,
     state: AlbumDetailUiState,
+    isLoggedIn: Boolean,
     onAction: (AlbumDetailAction) -> Unit
 ) {
     when (state) {
@@ -33,6 +34,7 @@ fun AlbumDetailContent(
             modifier = modifier,
             album = state.album,
             isLikeSubmitting = state.isLikeSubmitting,
+            isLoggedIn = isLoggedIn,
             onAction = onAction
         )
     }
@@ -42,7 +44,7 @@ fun AlbumDetailContent(
 @Composable
 private fun AlbumDetailLoadingPreview() {
     EssenceAppTheme {
-        AlbumDetailContent(state = AlbumDetailUiState.Loading, onAction = {})
+        AlbumDetailContent(state = AlbumDetailUiState.Loading, isLoggedIn = true, onAction = {})
     }
 }
 
@@ -55,6 +57,7 @@ private fun AlbumDetailSuccessPreview() {
                 album = previewAlbumSample,
                 isLikeSubmitting = false
             ),
+            isLoggedIn = true,
             onAction = {}
         )
     }
@@ -69,6 +72,7 @@ private fun AlbumDetailEmptyPreview() {
                 album = previewAlbumSample.copy(songs = emptyList()),
                 isLikeSubmitting = false
             ),
+            isLoggedIn = true,
             onAction = {}
         )
     }
@@ -80,6 +84,7 @@ private fun AlbumDetailErrorPreview() {
     EssenceAppTheme {
         AlbumDetailContent(
             state = AlbumDetailUiState.Error(message = "Sin conexion a internet"),
+            isLoggedIn = true,
             onAction = {}
         )
     }

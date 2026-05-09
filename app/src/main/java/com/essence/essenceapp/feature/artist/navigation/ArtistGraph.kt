@@ -15,7 +15,9 @@ import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.artistGraph(
     navController: NavController,
-    playbackManager: PlaybackManager
+    playbackManager: PlaybackManager,
+    isLoggedIn: Boolean,
+    onGuestPlayAttempt: () -> Unit
 ) {
     navigation(
         route = ArtistGraphRoutes.ARTIST_GRAPH,
@@ -39,8 +41,13 @@ fun NavGraphBuilder.artistGraph(
             OffscreenSurface {
                 ArtistDetailScreen(
                     artistLookup = artistLookup,
+                    isLoggedIn = isLoggedIn,
                     onBack = { navController.popBackStack() },
                     onOpenSong = { request ->
+                        if (!isLoggedIn) {
+                            onGuestPlayAttempt()
+                            return@ArtistDetailScreen
+                        }
                         playbackManager.setQueueFromItems(
                             items = request.queue,
                             startIndex = request.startIndex,

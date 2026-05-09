@@ -14,7 +14,9 @@ import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.albumGraph(
     navController: NavController,
-    playbackManager: PlaybackManager
+    playbackManager: PlaybackManager,
+    isLoggedIn: Boolean,
+    onGuestPlayAttempt: () -> Unit
 ) {
     navigation(
         route = AlbumGraphRoutes.ALBUM_GRAPH,
@@ -36,8 +38,13 @@ fun NavGraphBuilder.albumGraph(
             OffscreenSurface {
                 AlbumDetailScreen(
                     albumLookup = albumLookup,
+                    isLoggedIn = isLoggedIn,
                     onBack = { navController.popBackStack() },
                     onOpenSong = { request ->
+                        if (!isLoggedIn) {
+                            onGuestPlayAttempt()
+                            return@AlbumDetailScreen
+                        }
                         playbackManager.setQueueFromItems(
                             items = request.queue,
                             startIndex = request.startIndex,

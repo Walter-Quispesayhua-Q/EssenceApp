@@ -15,6 +15,7 @@ import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel(),
+    isLoggedIn: Boolean = false,
     onOpenSong: (PlaybackOpenRequest) -> Unit = {},
     onOpenAlbum: (String) -> Unit = {},
     onOpenArtist: (String) -> Unit = {}
@@ -51,6 +52,7 @@ fun SearchScreen(
                 .padding(innerPadding)
                 .imePadding(),
             state = state,
+            isLoggedIn = isLoggedIn,
             onAction = viewModel::onAction,
             onOpenSong = onOpenSong,
             onOpenAlbum = onOpenAlbum,

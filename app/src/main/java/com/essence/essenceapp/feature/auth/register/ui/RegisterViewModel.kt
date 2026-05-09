@@ -125,8 +125,15 @@ class RegisterViewModel @Inject constructor(
                     )
                 }
             }
-            result.onFailure {
-                updateEditing { it.copy(usernameStatus = UsernameStatus.Idle) }
+            result.onFailure { error ->
+                updateEditing {
+                    it.copy(
+                        usernameStatus = UsernameStatus.Unavailable(
+                            error.message?.takeIf { msg -> msg.isNotBlank() }
+                                ?: "No se pudo verificar el usuario"
+                        )
+                    )
+                }
             }
         }
     }

@@ -11,7 +11,9 @@ import com.essence.essenceapp.feature.artist.navigation.ArtistRoutes
 import com.essence.essenceapp.feature.song.ui.SongDetailScreen
 
 fun NavGraphBuilder.songGraph(
-    navController: NavController
+    navController: NavController,
+    isLoggedIn: Boolean,
+    onRequireAuth: () -> Unit
 ) {
     composable(
         route = SongRoutes.SONG_DETAIL,
@@ -23,6 +25,14 @@ fun NavGraphBuilder.songGraph(
         popEnterTransition = { songDetailPopEnter() },
         popExitTransition = { songDetailPopExit() }
     ) { backStackEntry ->
+        if (!isLoggedIn) {
+            LaunchedEffect(Unit) {
+                navController.popBackStack()
+                onRequireAuth()
+            }
+            return@composable
+        }
+
         val songLookup = backStackEntry.arguments?.getString(SongRoutes.SONG_LOOKUP)
         if (songLookup.isNullOrBlank()) {
             LaunchedEffect(Unit) { navController.popBackStack() }

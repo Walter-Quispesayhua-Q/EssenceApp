@@ -13,6 +13,7 @@ import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
 fun ArtistDetailScreen(
     artistLookup: String,
     viewModel: ArtistDetailViewModel = hiltViewModel(),
+    isLoggedIn: Boolean = false,
     onBack: () -> Unit = {},
     onOpenSong: (PlaybackOpenRequest) -> Unit = {},
     onOpenAlbum: (String) -> Unit = {}
@@ -25,6 +26,7 @@ fun ArtistDetailScreen(
 
     ArtistDetailContent(
         state = state,
+        isLoggedIn = isLoggedIn,
         onAction = { action ->
             when (action) {
                 ArtistDetailAction.Back -> onBack()

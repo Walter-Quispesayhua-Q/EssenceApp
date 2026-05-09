@@ -13,7 +13,9 @@ import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.searchGraph(
     navController: NavController,
-    playbackManager: PlaybackManager
+    playbackManager: PlaybackManager,
+    isLoggedIn: Boolean,
+    onGuestPlayAttempt: () -> Unit
 ) {
     navigation(
         route = SearchGraphRoutes.SEARCH_GRAPH,
@@ -22,7 +24,12 @@ fun NavGraphBuilder.searchGraph(
         composable(route = SearchRoutes.SEARCH) {
             OffscreenSurface {
                 SearchScreen(
+                    isLoggedIn = isLoggedIn,
                     onOpenSong = { request ->
+                        if (!isLoggedIn) {
+                            onGuestPlayAttempt()
+                            return@SearchScreen
+                        }
                         playbackManager.setQueueFromItems(
                             items = request.queue,
                             startIndex = request.startIndex,

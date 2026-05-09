@@ -15,10 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
 import com.essence.essenceapp.feature.song.ui.components.GlassIsland
+import com.essence.essenceapp.shared.ui.components.auth.GuestPlaybackHint
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
 import com.essence.essenceapp.ui.theme.MutedTeal
 import com.essence.essenceapp.ui.theme.PureWhite
@@ -27,28 +29,37 @@ import com.essence.essenceapp.ui.theme.SoftRose
 @Composable
 internal fun ArtistTracksIsland(
     songs: List<SongSimple>,
+    isLoggedIn: Boolean,
     onOpenSong: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    GlassIsland(
-        modifier = modifier,
-        accent = SoftRose,
-        contentPadding = PaddingValues(vertical = 6.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            songs.forEachIndexed { index, song ->
-                TrackRow(
-                    index = index + 1,
-                    isFirst = index == 0,
-                    song = song,
-                    onClick = { onOpenSong(song.detailLookup) }
-                )
-                if (index < songs.size - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 56.dp, end = 16.dp),
-                        thickness = 0.5.dp,
-                        color = PureWhite.copy(alpha = 0.05f)
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (!isLoggedIn) {
+            GuestPlaybackHint(
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
+
+        GlassIsland(
+            accent = SoftRose,
+            contentPadding = PaddingValues(vertical = 6.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                songs.forEachIndexed { index, song ->
+                    TrackRow(
+                        index = index + 1,
+                        isFirst = index == 0,
+                        song = song,
+                        isLoggedIn = isLoggedIn,
+                        onClick = { onOpenSong(song.detailLookup) }
                     )
+                    if (index < songs.size - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 56.dp, end = 16.dp),
+                            thickness = 0.5.dp,
+                            color = PureWhite.copy(alpha = 0.05f)
+                        )
+                    }
                 }
             }
         }
@@ -60,11 +71,15 @@ private fun TrackRow(
     index: Int,
     isFirst: Boolean,
     song: SongSimple,
+    isLoggedIn: Boolean,
     onClick: () -> Unit
 ) {
+    val rowAlpha = if (isLoggedIn) 1f else 0.45f
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(rowAlpha)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -70,6 +71,7 @@ import com.essence.essenceapp.feature.search.domain.showArtists
 import com.essence.essenceapp.feature.search.domain.showSongs
 import com.essence.essenceapp.feature.search.ui.SearchAction
 import com.essence.essenceapp.feature.search.ui.SearchUiState
+import com.essence.essenceapp.shared.ui.components.auth.GuestPlaybackHint
 import com.essence.essenceapp.shared.ui.components.cards.album.GridAlbumContent
 import com.essence.essenceapp.shared.ui.components.cards.artist.CircleArtistContent
 import com.essence.essenceapp.shared.ui.components.cards.song.CompactSongContent
@@ -89,6 +91,7 @@ import kotlinx.coroutines.flow.filter
 fun SearchContent(
     modifier: Modifier = Modifier,
     state: SearchUiState,
+    isLoggedIn: Boolean,
     onAction: (SearchAction) -> Unit,
     onOpenSong: (PlaybackOpenRequest) -> Unit = {},
     onOpenAlbum: (String) -> Unit = {},
@@ -106,6 +109,7 @@ fun SearchContent(
         is SearchUiState.Success -> SearchSuccessContent(
             modifier = modifier,
             state = state,
+            isLoggedIn = isLoggedIn,
             onAction = onAction,
             onOpenSong = onOpenSong,
             onOpenAlbum = onOpenAlbum,
@@ -508,6 +512,7 @@ private fun CategorySection(
 private fun SearchSuccessContent(
     modifier: Modifier = Modifier,
     state: SearchUiState.Success,
+    isLoggedIn: Boolean,
     onAction: (SearchAction) -> Unit,
     onOpenSong: (PlaybackOpenRequest) -> Unit,
     onOpenAlbum: (String) -> Unit,
@@ -554,13 +559,23 @@ private fun SearchSuccessContent(
                 )
             }
 
+            if (!isLoggedIn) {
+                item {
+                    GuestPlaybackHint(
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
             item {
+                val rowAlpha = if (isLoggedIn) 1f else 0.45f
                 ResultsIsland(modifier = Modifier.padding(horizontal = 16.dp)) {
                     val queueItems = songs.toQueueItems()
                     songs.forEachIndexed { index, song ->
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .alpha(rowAlpha)
                                 .clickable {
                                     onOpenSong(
                                         PlaybackOpenRequest(
@@ -961,7 +976,7 @@ private fun InfiniteScrollEffect(
 @Composable
 private fun SearchIdlePreview() {
     EssenceAppTheme {
-        SearchContent(state = SearchUiState.Idle, onAction = {})
+        SearchContent(state = SearchUiState.Idle, isLoggedIn = true, onAction = {})
     }
 }
 
@@ -971,6 +986,7 @@ private fun SearchEditingLoadingPreview() {
     EssenceAppTheme {
         SearchContent(
             state = SearchUiState.Editing(isCategoriesLoading = true),
+            isLoggedIn = true,
             onAction = {}
         )
     }
@@ -990,6 +1006,7 @@ private fun SearchEditingReadyPreview() {
                     Category(label = "Artistas", value = "artist")
                 )
             ),
+            isLoggedIn = true,
             onAction = {}
         )
     }
