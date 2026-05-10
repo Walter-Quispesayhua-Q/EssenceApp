@@ -2,6 +2,7 @@ package com.essence.essenceapp.feature.profile.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.essence.essenceapp.core.network.auth.SessionManager
 import com.essence.essenceapp.feature.profile.domain.usecase.ObserveUserProfileUseCase
 import com.essence.essenceapp.feature.profile.domain.usecase.RefreshUserProfileUseCase
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     observeUserProfileUseCase: ObserveUserProfileUseCase,
-    private val refreshUserProfileUseCase: RefreshUserProfileUseCase
+    private val refreshUserProfileUseCase: RefreshUserProfileUseCase,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val refreshing = MutableStateFlow(false)
@@ -67,5 +69,9 @@ class ProfileViewModel @Inject constructor(
 
             refreshing.value = false
         }
+    }
+
+    fun onLogout() {
+        sessionManager.logout()
     }
 }

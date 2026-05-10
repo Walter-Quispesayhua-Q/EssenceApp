@@ -1,6 +1,7 @@
 package com.essence.essenceapp.core.extractor
 
 import android.util.Log
+import com.essence.essenceapp.core.streaming.GoogleVideoUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -31,6 +32,7 @@ object SongExtractor {
         try {
             NewPipeInitializer.init()
             val extractor = withRetry { buildAndFetch(videoId) }
+            val streamingUrl = extractor.audioStreams.maxByOrNull { it.bitrate }?.url
             val extracted = ExtractedSong(
                 videoId = videoId,
                 title = extractor.name.orEmpty(),
@@ -38,7 +40,8 @@ object SongExtractor {
                 uploaderName = extractor.uploaderName ?: "Unknown",
                 uploaderUrl = extractor.uploaderUrl ?: "",
                 thumbnailUrl = extractor.thumbnails.maxByOrNull { it.height }?.url,
-                streamingUrl = extractor.audioStreams.maxByOrNull { it.bitrate }?.url,
+                streamingUrl = streamingUrl,
+                streamingUrlExpiresAt = GoogleVideoUrl.expireFrom(streamingUrl),
                 viewCount = extractor.viewCount.coerceAtLeast(0),
                 releaseDate = extractor.uploadDate?.let {
                     try {

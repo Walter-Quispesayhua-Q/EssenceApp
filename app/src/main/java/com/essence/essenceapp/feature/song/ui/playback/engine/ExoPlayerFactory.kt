@@ -121,14 +121,32 @@ class ExoPlayerFactory @Inject constructor(
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
             .setLoadErrorHandlingPolicy(loadErrorPolicy)
 
-        // ── Buffer conservador para audio (doc recomienda 1000/2000 como mínimo) ──
+        // ── LoadControl tuneado para audio streaming ──
+        //
+        // - minBuffer/maxBuffer 30s/60s: ventana cómoda; toda una canción
+        //   media (~5 min @ 256kbps ≈ 9MB) cabe holgada en RAM.
+        // - bufferForPlaybackMs 2s: arranque ágil en redes 4G/WiFi modernas
+        //   (Spotify y YT Music arrancan en ~1.5–2s). Antes era 5s, lo que
+        //   añadía latencia innecesaria al primer Play.
+        // - bufferForPlaybackAfterRebufferMs 5s: tras un stall, ser un poco
+        //   más conservador para evitar entrar en rebuffer-loop si la red
+        //   sigue inestable.
+        // - backBuffer 30s con retainFromKeyframe=true: ExoPlayer conserva
+        //   los últimos 30s de audio decodificado para que un seek hacia
+        //   atrás (slider) sea instantáneo, sin re-descargar.
+        // - prioritizeTimeOverSizeThresholds=true: para audio (bitrate
+        //   predecible) evaluar el buffer por duración es más estable que
+        //   por bytes; recomendado por el equipo de ExoPlayer para apps
+        //   de música (issue google/ExoPlayer#9040).
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                30_000,  // minBufferMs
-                60_000,  // maxBufferMs
-                5_000,   // bufferForPlaybackMs
-                8_000    // bufferForPlaybackAfterRebufferMs
+                30_000,
+                60_000,
+                2_000,
+                5_000
             )
+            .setBackBuffer(30_000, true)
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         // ── Audio attributes para focus y duck ──
@@ -148,6 +166,11 @@ class ExoPlayerFactory @Inject constructor(
             .setLoadControl(loadControl)
             .setAudioAttributes(audioAttributes, true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
+            // Pausa automatica al desconectar auriculares (cable o BT).
+            // Android emite ACTION_AUDIO_BECOMING_NOISY y ExoPlayer lo
+            // intercepta para evitar que el audio "salte" al speaker
+            // del telefono de forma brusca.
+            .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
                 skipSilenceEnabled = false

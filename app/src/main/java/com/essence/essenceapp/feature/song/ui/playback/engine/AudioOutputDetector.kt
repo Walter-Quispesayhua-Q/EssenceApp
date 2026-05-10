@@ -16,9 +16,37 @@ import kotlinx.coroutines.flow.asStateFlow
 
 private const val TAG = "AUDIO_OUTPUT"
 
-//Detecta el dispositivo de salida de audio activo y emite
-//cambios como [StateFlow]. Distingue entre speaker, audífonos
-//con cable, Bluetooth con/sin micrófono, y USB.
+/**
+ * Detector reactivo del dispositivo de salida de audio activo.
+ *
+ * Expone un [StateFlow] con el [AudioOutputType] vigente y lo refresca
+ * automáticamente cuando el usuario conecta o desconecta un periférico
+ * (cable, Bluetooth, USB).
+ *
+ * ## Por qué existe
+ *
+ * La UI muestra un indicador visual del canal de salida (p. ej. icono
+ * de auriculares BT en el MiniPlayer). Observar el [outputType] como
+ * `StateFlow` permite que Compose recomponga sólo ese icono sin tocar
+ * el resto del árbol.
+ *
+ * ## Prioridad de detección
+ *
+ * `WIRED_HEADSET`/`WIRED_HEADPHONES` > `USB_AUDIO` > `BLUETOOTH_*` > `PHONE_SPEAKER`.
+ *
+ * Los cables tienen prioridad sobre Bluetooth porque, si ambos están
+ * conectados, Android encamina el audio al cable por defecto. La
+ * distinción BT *headset* vs *speaker* se infiere de si el dispositivo
+ * también expone una entrada (micrófono).
+ *
+ * ## Lifecycle
+ *
+ * Singleton con el mismo lifetime que el proceso. El callback queda
+ * registrado tras la primera inyección; [release] puede llamarse para
+ * desinstrumentar (útil en tests o apagado controlado). En producción
+ * no es necesario invocarlo porque el callback se libera cuando el
+ * proceso muere.
+ */
 @Singleton
 class AudioOutputDetector @Inject constructor(
     @ApplicationContext private val context: Context
@@ -28,18 +56,27 @@ class AudioOutputDetector @Inject constructor(
     private val _outputType = MutableStateFlow(detectCurrent())
     val outputType: StateFlow<AudioOutputType> = _outputType.asStateFlow()
 
+    private val deviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
+            refresh()
+        }
+
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+            refresh()
+        }
+    }
+
     init {
-        audioManager.registerAudioDeviceCallback(object : AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
-                refresh()
-            }
-
-            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
-                refresh()
-            }
-        }, Handler(Looper.getMainLooper()))
-
+        audioManager.registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
         Log.d(TAG, "Initial output: ${_outputType.value.name} (${_outputType.value.label})")
+    }
+
+    /**
+     * Libera los callbacks del [AudioManager]. Pensado para tests y
+     * escenarios de apagado controlado; en producción no se invoca.
+     */
+    fun release() {
+        audioManager.unregisterAudioDeviceCallback(deviceCallback)
     }
 
     private fun refresh() {
@@ -50,8 +87,15 @@ class AudioOutputDetector @Inject constructor(
         }
     }
 
-//    Inspecciona los dispositivos de salida conectados y devuelve
-//    el de mayor prioridad: cable > bluetooth > USB > speaker.
+    /**
+     * Inspecciona los dispositivos de salida conectados y devuelve
+     * el de mayor prioridad según el orden
+     * `cable > USB > Bluetooth > speaker`.
+     *
+     * La segunda pasada sobre el array de dispositivos separa BT
+     * *headset* (tiene micrófono asociado) de BT *speaker* (no lo tiene)
+     * para mostrar el icono correcto en la UI.
+     */
     private fun detectCurrent(): AudioOutputType {
         val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
 

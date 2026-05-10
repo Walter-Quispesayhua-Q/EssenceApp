@@ -10,6 +10,7 @@ fun AddSongMetadata.toSyncRequestDTO(): SongSyncRequestApiDTO = SongSyncRequestA
     uploaderUrl = uploaderUrl,
     thumbnailUrl = thumbnailUrl,
     streamingUrl = null,
+    streamingUrlExpiresAt = null,
     viewCount = viewCount,
     releaseDate = releaseDate
 )

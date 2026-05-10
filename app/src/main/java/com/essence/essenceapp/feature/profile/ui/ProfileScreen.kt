@@ -25,6 +25,7 @@ fun ProfileScreen(
         modifier = Modifier.fillMaxSize(),
         state = state,
         onRetry = viewModel::onRefresh,
-        onBack = onBack
+        onBack = onBack,
+        onLogout = viewModel::onLogout
     )
 }

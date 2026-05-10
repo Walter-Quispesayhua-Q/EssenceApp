@@ -10,6 +10,7 @@ fun ExtractedSong.toSyncRequestDTO() = SongSyncRequestApiDTO(
     uploaderUrl = uploaderUrl,
     thumbnailUrl = thumbnailUrl,
     streamingUrl = streamingUrl,
+    streamingUrlExpiresAt = streamingUrlExpiresAt,
     viewCount = viewCount,
     releaseDate = releaseDate
 )

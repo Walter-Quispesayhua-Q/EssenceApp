@@ -1,5 +1,6 @@
 package com.essence.essenceapp.feature.song.data.dto
 
+import java.time.Instant
 import java.time.LocalDate
 
 data class SongSyncRequestApiDTO(
@@ -10,6 +11,7 @@ data class SongSyncRequestApiDTO(
     val uploaderUrl: String,
     val thumbnailUrl: String?,
     val streamingUrl: String?,
+    val streamingUrlExpiresAt: Instant?,
     val viewCount: Long?,
     val releaseDate: LocalDate?
 )

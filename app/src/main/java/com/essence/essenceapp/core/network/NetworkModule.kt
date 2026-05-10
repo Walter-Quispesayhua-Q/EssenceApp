@@ -33,6 +33,7 @@ import javax.inject.Singleton
 import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -43,7 +44,7 @@ private const val CONNECT_TIMEOUT_S = 20L
 private const val READ_TIMEOUT_S = 60L
 private const val WRITE_TIMEOUT_S = 60L
 private const val CALL_TIMEOUT_S = 75L
-private const val CONNECTION_POOL_MAX_IDLE = 8
+private const val CONNECTION_POOL_MAX_IDLE = 12
 private const val CONNECTION_POOL_KEEP_ALIVE_MIN = 5L
 
 private const val NEWPIPE_CONNECT_TIMEOUT_S = 8L
@@ -106,6 +107,7 @@ object NetworkModule {
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .connectionPool(connectionPool)
+            .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
             .retryOnConnectionFailure(true)
             .followRedirects(true)
             .followSslRedirects(true)

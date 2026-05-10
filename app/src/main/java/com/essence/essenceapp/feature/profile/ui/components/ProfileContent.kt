@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -31,14 +32,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,13 +94,15 @@ fun ProfileContent(
     modifier: Modifier = Modifier,
     state: ProfileUiState,
     onRetry: () -> Unit,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null
 ) {
     ProfileStateTransition(
         modifier = modifier,
         state = state,
         onRetry = onRetry,
-        onBack = onBack
+        onBack = onBack,
+        onLogout = onLogout
     )
 }
 
@@ -101,7 +111,8 @@ private fun ProfileStateTransition(
     modifier: Modifier,
     state: ProfileUiState,
     onRetry: () -> Unit,
-    onBack: (() -> Unit)?
+    onBack: (() -> Unit)?,
+    onLogout: (() -> Unit)?
 ) {
     AnimatedContent(
         targetState = state,
@@ -139,7 +150,8 @@ private fun ProfileStateTransition(
             is ProfileUiState.Success -> ProfileSuccessState(
                 modifier = Modifier.fillMaxSize(),
                 profile = current.profile,
-                onBack = onBack
+                onBack = onBack,
+                onLogout = onLogout
             )
         }
     }
@@ -155,7 +167,8 @@ private fun ProfileUiState.transitionKey(): Int = when (this) {
 private fun ProfileSuccessState(
     modifier: Modifier = Modifier,
     profile: UserProfile,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null
 ) {
     val bottomClearance = LocalBottomBarClearance.current
 
@@ -210,6 +223,17 @@ private fun ProfileSuccessState(
                     profile = profile,
                     modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)
                 )
+            }
+
+            if (onLogout != null) {
+                item {
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    LogoutSection(
+                        modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+                        onLogout = onLogout
+                    )
+                }
             }
         }
     }
@@ -952,6 +976,113 @@ private fun SectionHeader(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
             color = PureWhite.copy(alpha = 0.45f)
+        )
+    }
+}
+
+@Composable
+private fun LogoutSection(
+    modifier: Modifier = Modifier,
+    onLogout: () -> Unit
+) {
+    var showConfirm by remember { mutableStateOf(false) }
+
+    GlassIsland(
+        modifier = modifier,
+        accent = SoftRose
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Sesion",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PureWhite
+            )
+
+            Text(
+                text = "Cierra sesion para volver al modo invitado.",
+                style = MaterialTheme.typography.bodySmall,
+                color = PureWhite.copy(alpha = 0.55f)
+            )
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { showConfirm = true },
+                shape = RoundedCornerShape(14.dp),
+                color = SoftRose.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, SoftRose.copy(alpha = 0.34f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = null,
+                        tint = SoftRose,
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Text(
+                        text = "Cerrar sesion",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SoftRose
+                    )
+                }
+            }
+        }
+    }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = {
+                Text(
+                    text = "Cerrar sesion",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Tu sesion se cerrara y volveras al modo invitado. Necesitaras iniciar sesion otra vez para acceder a tu cuenta."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirm = false
+                        onLogout()
+                    }
+                ) {
+                    Text(
+                        text = "Cerrar sesion",
+                        color = SoftRose,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) {
+                    Text(
+                        text = "Cancelar",
+                        color = PureWhite.copy(alpha = 0.78f)
+                    )
+                }
+            },
+            containerColor = GraphiteSurface,
+            titleContentColor = PureWhite,
+            textContentColor = PureWhite.copy(alpha = 0.78f)
         )
     }
 }

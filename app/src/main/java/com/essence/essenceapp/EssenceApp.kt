@@ -2,6 +2,7 @@ package com.essence.essenceapp
 
 import android.app.Application
 import com.essence.essenceapp.core.extractor.NewPipeInitializer
+import com.essence.essenceapp.core.network.BackendWarmer
 import com.essence.essenceapp.core.network.qualifier.NewPipeOkHttpClient
 import com.essence.essenceapp.feature.song.ui.playback.engine.MediaAudioCache
 import com.essence.essenceapp.ui.resilience.GlobalExceptionHandler
@@ -41,6 +42,12 @@ class EssenceApp : Application() {
         fun newPipeOkHttpClient(): OkHttpClient
     }
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface BackendWarmerEntryPoint {
+        fun backendWarmer(): BackendWarmer
+    }
+
     private val mediaAudioCache: MediaAudioCache by lazy {
         EntryPointAccessors.fromApplication(
             this,
@@ -62,6 +69,13 @@ class EssenceApp : Application() {
         ).newPipeOkHttpClient()
     }
 
+    private val backendWarmer: BackendWarmer by lazy {
+        EntryPointAccessors.fromApplication(
+            this,
+            BackendWarmerEntryPoint::class.java
+        ).backendWarmer()
+    }
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -69,6 +83,7 @@ class EssenceApp : Application() {
         globalExceptionHandler.installAsDefault()
         NewPipeInitializer.setOkHttpClient(newPipeOkHttpClient)
         NewPipeInitializer.warmUp(appScope)
+        backendWarmer.warmUp(appScope)
     }
 
     override fun onTrimMemory(level: Int) {

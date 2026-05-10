@@ -10,6 +10,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import java.time.Instant
 
 interface SongApiService {
 
@@ -31,7 +32,8 @@ interface SongApiService {
     @PATCH("$BASE/{videoId}/streaming-url")
     suspend fun refreshStreamingUrl(
         @Path("videoId") videoId: String,
-        @Query("streamingUrl") streamingUrl: String
+        @Query("streamingUrl") streamingUrl: String,
+        @Query("expiresAt") expiresAt: Instant? = null
     ): Response<Unit>
 
     @POST("$BASE/{songId}/like")

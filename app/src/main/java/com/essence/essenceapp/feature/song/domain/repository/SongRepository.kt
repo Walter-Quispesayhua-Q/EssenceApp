@@ -7,6 +7,8 @@ interface SongRepository {
 
     suspend fun syncSong(videoId: String): Song?
 
+    suspend fun resolveSong(songLookup: String, persistedId: Long?): Song?
+
     suspend fun refreshStreamingUrl(
         currentSong: Song,
         isStillCurrent: () -> Boolean

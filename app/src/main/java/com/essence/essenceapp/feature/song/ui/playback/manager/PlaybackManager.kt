@@ -1,27 +1,21 @@
 package com.essence.essenceapp.feature.song.ui.playback.manager
 
-import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.os.PowerManager
 import android.util.Log
 import com.essence.essenceapp.core.network.resolveImageUrl
 import com.essence.essenceapp.feature.song.domain.model.Song
+import com.essence.essenceapp.feature.song.domain.model.SongLookupHint
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
-import com.essence.essenceapp.feature.song.domain.usecase.RefreshStreamingUrlUseCase
+import com.essence.essenceapp.feature.song.ui.playback.AudioPlayerState
 import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
 import com.essence.essenceapp.feature.song.ui.playback.PlaybackRepeatMode
 import com.essence.essenceapp.feature.song.ui.playback.PlaybackUiState
 import com.essence.essenceapp.feature.song.ui.playback.engine.AudioOutputDetector
 import com.essence.essenceapp.feature.song.ui.playback.engine.AudioPlayerEngine
-import com.essence.essenceapp.feature.song.ui.playback.engine.MediaPrefetcher
 import com.essence.essenceapp.feature.song.ui.playback.mapper.toNowPlayingInfo
 import com.essence.essenceapp.feature.song.ui.playback.model.NowPlayingInfo
-import com.essence.essenceapp.feature.song.ui.playback.service.MediaPlaybackService
+import com.essence.essenceapp.shared.playback.mapper.toLookupHint
 import com.essence.essenceapp.shared.playback.model.PlaybackQueue
 import com.essence.essenceapp.shared.playback.model.PlaybackQueueItem
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -29,47 +23,32 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val PLAYBACK_TAG = "PLAYBACK_DEBUG"
 private const val RESTART_THRESHOLD_MS = 3_000L
-private const val WAKELOCK_TIMEOUT_MS = 30_000L
-private const val NAVIGATION_DEBOUNCE_MS = 200L
-private const val ERROR_RECOVERY_INITIAL_DELAY_MS = 4_000L
-private const val ERROR_RECOVERY_BETWEEN_ATTEMPTS_MS = 5_000L
-private const val MAX_ERROR_RECOVERY_ATTEMPTS = 3
-private const val ERROR_RECOVERY_RESET_PLAYBACK_MS = 8_000L
 
 @Singleton
 class PlaybackManager @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val audioPlayerEngine: AudioPlayerEngine,
     private val audioOutputDetector: AudioOutputDetector,
     private val getSongUseCase: GetSongUseCase,
-    private val refreshStreamingUrlUseCase: RefreshStreamingUrlUseCase,
     private val queueController: PlaybackQueueController,
     private val historyRecorder: PlaybackHistoryRecorder,
     private val likeController: PlaybackLikeController,
-    private val mediaPrefetcher: MediaPrefetcher
+    private val urlRefresher: PlaybackUrlRefresher,
+    private val prefetchCoordinator: PlaybackPrefetchCoordinator,
+    private val errorRecovery: PlaybackErrorRecoveryController,
+    private val navigationController: PlaybackNavigationController,
+    private val ttfpTracker: PlaybackTtfpTracker,
+    private val transitionWakeLock: PlaybackTransitionWakeLock,
+    private val mediaServiceController: PlaybackMediaServiceController,
+    private val resolvedCache: ResolvedSongCache
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    private val powerManager by lazy {
-        context.getSystemService(Context.POWER_SERVICE) as PowerManager
-    }
-    private val transitionWakeLock by lazy {
-        powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "EssenceApp:PlaybackTransitionLock"
-        ).apply { setReferenceCounted(false) }
-    }
 
     private val _nowPlaying = MutableStateFlow<NowPlayingInfo?>(null)
     val nowPlaying: StateFlow<NowPlayingInfo?> = _nowPlaying.asStateFlow()
@@ -78,49 +57,116 @@ class PlaybackManager @Inject constructor(
 
     val isCurrentSongLiked: StateFlow<Boolean> = likeController.isLiked
 
-    private val resolvedSongs = mutableMapOf<String, Song>()
-
-    fun getResolvedSong(lookup: String): Song? = resolvedSongs[lookup]
-
-    fun currentVideoId(): String? = _nowPlaying.value?.songLookup
-
     private val _isResolvingNextSong = MutableStateFlow(false)
-
     private val _manualErrorMessage = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<PlaybackUiState> = combine(
-        audioPlayerEngine.state,
-        queueController.queue,
-        audioOutputDetector.outputType,
-        _isResolvingNextSong,
-        _manualErrorMessage
-    ) { audioState, queue, output, resolving, manualError ->
-        PlaybackUiState(
-            isPlaying = !resolving && audioState.isPlaying,
-            isBuffering = audioState.isBuffering || resolving,
-            positionMs = audioState.positionMs,
-            durationMs = audioState.durationMs,
-            repeatMode = audioState.repeatMode,
-            canGoPrevious = queue?.canGoPrevious == true || audioState.durationMs > 0L,
-            canGoNext = queue?.canGoNext == true,
-            errorMessage = manualError ?: audioState.errorMessage,
-            audioOutput = output
-        )
-    }.stateIn(scope, SharingStarted.Eagerly, PlaybackUiState())
+    val uiState: StateFlow<PlaybackUiState> = createPlaybackUiStateFlow(
+        scope = scope,
+        audioPlayerState = audioPlayerEngine.state,
+        queue = queueController.queue,
+        audioOutputType = audioOutputDetector.outputType,
+        isResolvingNextSong = _isResolvingNextSong,
+        manualErrorMessage = _manualErrorMessage
+    )
 
     private var hasEndedHandled = false
     private var lastPositionMs: Long = 0L
-    private var errorRecoveryJob: Job? = null
-    private var errorRecoveryAttempts: Int = 0
-    private var lastStablePlaybackStartMs: Long = 0L
     private var resolveSongJob: Job? = null
     private var sourceRefreshJob: Job? = null
-    private var prefetchJob: Job? = null
-    private var pendingNavigationJob: Job? = null
-    private var lastNavigationTime: Long = 0L
 
     @Volatile
     private var pauseRequestedDuringLoad: Boolean = false
+
+    fun getResolvedSong(lookup: String): Song? = resolvedCache.get(lookup)
+
+    fun currentVideoId(): String? = _nowPlaying.value?.songLookup
+
+    init {
+        scope.launch {
+            audioPlayerEngine.state.collect { audioState ->
+                handlePlayerState(audioState)
+            }
+        }
+    }
+
+    private fun handlePlayerState(audioState: AudioPlayerState) {
+        lastPositionMs = audioState.positionMs
+        recordHistoryIfNeeded(audioState)
+        autoAdvanceIfEnded(audioState)
+        handleSourceRefreshRequest(audioState)
+        manageErrorRecovery(audioState)
+    }
+
+    private fun recordHistoryIfNeeded(audioState: AudioPlayerState) {
+        if (
+            !historyRecorder.isAlreadyRecorded() &&
+            historyRecorder.hasReachedListenThreshold(lastPositionMs)
+        ) {
+            _nowPlaying.value?.let { info ->
+                historyRecorder.recordListened(info.songId, lastPositionMs)
+            }
+        }
+        if (audioState.hasEnded && !historyRecorder.isAlreadyRecorded()) {
+            _nowPlaying.value?.let { info ->
+                historyRecorder.recordCompleted(info.songId, lastPositionMs)
+            }
+        }
+    }
+
+    private fun autoAdvanceIfEnded(audioState: AudioPlayerState) {
+        if (
+            audioState.hasEnded &&
+            audioState.repeatMode == PlaybackRepeatMode.Off &&
+            !hasEndedHandled
+        ) {
+            hasEndedHandled = true
+            transitionWakeLock.acquire()
+            goNext()
+        }
+    }
+
+    private fun handleSourceRefreshRequest(audioState: AudioPlayerState) {
+        if (!audioState.requiresSourceRefresh) return
+        if (sourceRefreshJob?.isActive == true) return
+        val info = _nowPlaying.value
+        if (info == null || info.songLookup.isBlank()) {
+            audioPlayerEngine.clearSourceRefreshRequest()
+            return
+        }
+        audioPlayerEngine.clearSourceRefreshRequest()
+        sourceRefreshJob = scope.launch {
+            handleSourceRefresh(info.songLookup)
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (sourceRefreshJob === job) sourceRefreshJob = null
+            }
+        }
+    }
+
+    private fun manageErrorRecovery(audioState: AudioPlayerState) {
+        val shouldAttemptRecovery = audioState.errorMessage != null &&
+                !audioState.requiresSourceRefresh &&
+                audioState.repeatMode == PlaybackRepeatMode.Off &&
+                queueController.canGoNext
+
+        if (shouldAttemptRecovery) {
+            errorRecovery.scheduleStep(
+                isErrorStillPresent = { audioPlayerEngine.state.value.errorMessage != null },
+                canGoNext = { queueController.canGoNext },
+                onRetry = { audioPlayerEngine.resume() },
+                onSkipToNext = { goNext() }
+            )
+            return
+        }
+
+        errorRecovery.cancel()
+        if (audioState.isPlaying) {
+            errorRecovery.noteStablePlayback()
+            ttfpTracker.reportIfPending(_nowPlaying.value?.songLookup)
+        } else {
+            errorRecovery.noteNoPlayback()
+        }
+    }
 
     private fun recordSkippedForCurrentIfNeeded(nextLookup: String) {
         val current = _nowPlaying.value ?: return
@@ -129,79 +175,6 @@ class PlaybackManager @Inject constructor(
         if (!historyRecorder.shouldRecordOnSwitch(lastPositionMs)) return
         historyRecorder.recordSkipped(current.songId, lastPositionMs)
     }
-
-    init {
-        scope.launch {
-            audioPlayerEngine.state.collect { audioState ->
-                lastPositionMs = audioState.positionMs
-
-                if (
-                    !historyRecorder.isAlreadyRecorded() &&
-                    historyRecorder.hasReachedListenThreshold(lastPositionMs)
-                ) {
-                    val info = _nowPlaying.value
-                    if (info != null) {
-                        historyRecorder.recordListened(info.songId, lastPositionMs)
-                    }
-                }
-
-                if (audioState.hasEnded && !historyRecorder.isAlreadyRecorded()) {
-                    val info = _nowPlaying.value
-                    if (info != null) {
-                        historyRecorder.recordCompleted(info.songId, lastPositionMs)
-                    }
-                }
-
-                if (
-                    audioState.hasEnded &&
-                    audioState.repeatMode == PlaybackRepeatMode.Off &&
-                    !hasEndedHandled
-                ) {
-                    hasEndedHandled = true
-                    acquireTransitionWakeLock()
-                    goNext()
-                }
-
-                if (audioState.requiresSourceRefresh && sourceRefreshJob?.isActive != true) {
-                    val info = _nowPlaying.value
-                    if (info != null && info.songLookup.isNotBlank()) {
-                        audioPlayerEngine.clearSourceRefreshRequest()
-                        sourceRefreshJob = scope.launch { handleSourceRefresh(info.songLookup) }
-                    } else {
-                        audioPlayerEngine.clearSourceRefreshRequest()
-                    }
-                }
-                if (
-                    audioState.errorMessage != null &&
-                    !audioState.requiresSourceRefresh &&
-                    audioState.repeatMode == PlaybackRepeatMode.Off &&
-                    queueController.canGoNext
-                ) {
-                    if (errorRecoveryJob?.isActive != true) {
-                        errorRecoveryJob = scope.launch { handleErrorRecoveryStep() }
-                    }
-                } else {
-                    errorRecoveryJob?.cancel()
-                    errorRecoveryJob = null
-                    if (audioState.isPlaying) {
-                        if (lastStablePlaybackStartMs == 0L) {
-                            lastStablePlaybackStartMs = System.currentTimeMillis()
-                        } else if (
-                            errorRecoveryAttempts > 0 &&
-                            System.currentTimeMillis() - lastStablePlaybackStartMs >= ERROR_RECOVERY_RESET_PLAYBACK_MS
-                        ) {
-                            Log.d(PLAYBACK_TAG, "Reproduccion estable, reseteando contador de recuperacion")
-                            errorRecoveryAttempts = 0
-                        }
-                    } else {
-                        lastStablePlaybackStartMs = 0L
-                    }
-                }
-            }
-        }
-    }
-
-    // Queue
 
     fun setQueue(queue: PlaybackQueue) = queueController.setQueue(queue)
 
@@ -213,12 +186,16 @@ class PlaybackManager @Inject constructor(
 
     fun clearQueue() = queueController.clear()
 
-    //Playback principal
 
     fun playSong(song: Song, forceRestart: Boolean = false) {
         val info = song.toNowPlayingInfo()
         if (info == null) {
-            Log.w(PLAYBACK_TAG, "streamingUrl ausente para ${song.hlsMasterKey} (transitorio, refresh en curso)")
+            if (song.streamingUrl.isNullOrBlank()) {
+                Log.d(PLAYBACK_TAG, "Backend declaro URL nula para ${song.hlsMasterKey}, refresh certero")
+                forceRefreshAndPlay(song, forceRestart)
+            } else {
+                Log.w(PLAYBACK_TAG, "streamingUrl ausente para ${song.hlsMasterKey} (transitorio)")
+            }
             return
         }
 
@@ -235,8 +212,9 @@ class PlaybackManager @Inject constructor(
         }
 
         recordSkippedForCurrentIfNeeded(info.songLookup)
+        ttfpTracker.start(info.songLookup, "playSong", replaceExisting = forceRestart)
 
-        resolvedSongs[song.hlsMasterKey] = song
+        resolvedCache.put(song.hlsMasterKey, song)
         queueController.alignIndex(info.songLookup)
 
         _manualErrorMessage.value = null
@@ -244,11 +222,9 @@ class PlaybackManager @Inject constructor(
         historyRecorder.resetForNewSong()
         hasEndedHandled = false
         lastPositionMs = 0L
-        errorRecoveryAttempts = 0
-        lastStablePlaybackStartMs = 0L
-        errorRecoveryJob?.cancel()
-        errorRecoveryJob = null
+        errorRecovery.reset()
         likeController.setLiked(song.isLiked)
+
         audioPlayerEngine.play(
             url = info.streamingUrl,
             forceRestart = forceRestart,
@@ -261,8 +237,11 @@ class PlaybackManager @Inject constructor(
             pauseRequestedDuringLoad = false
             audioPlayerEngine.pause()
         }
-        startMediaService()
-        prefetchNextSong()
+        mediaServiceController.start()
+        prefetchCoordinator.prefetchNext(queueController.peekNext())
+        urlRefresher.scheduleProactive(song) { fresh ->
+            resolvedCache.put(fresh.hlsMasterKey, fresh)
+        }
     }
 
     fun setNowPlaying(info: NowPlayingInfo) {
@@ -278,15 +257,12 @@ class PlaybackManager @Inject constructor(
         ) {
             historyRecorder.recordSkipped(info.songId, lastPositionMs)
         }
-        mediaPrefetcher.cancel()
+        prefetchCoordinator.cancelAll()
         audioPlayerEngine.stop()
-        errorRecoveryJob?.cancel()
-        errorRecoveryJob = null
-        errorRecoveryAttempts = 0
-        lastStablePlaybackStartMs = 0L
+        errorRecovery.reset()
         _manualErrorMessage.value = null
         _nowPlaying.value = null
-        stopMediaService()
+        mediaServiceController.stop()
     }
 
     fun onAction(action: PlaybackAction) {
@@ -326,20 +302,19 @@ class PlaybackManager @Inject constructor(
     }
 
     fun release() {
-        mediaPrefetcher.cancel()
+        prefetchCoordinator.cancelAll()
         audioPlayerEngine.release()
         _nowPlaying.value = null
         queueController.clear()
-        resolvedSongs.clear()
+        resolvedCache.clear()
+        ttfpTracker.clear()
     }
-
-    //Navegacion en la cola
 
     fun goNext() {
         val nextItem = queueController.advanceToNext()
         if (nextItem == null) {
             Log.d(PLAYBACK_TAG, "goNext: fin de cola")
-            releaseTransitionWakeLock()
+            transitionWakeLock.release()
             return
         }
         handleNavigation(nextItem)
@@ -367,37 +342,13 @@ class PlaybackManager @Inject constructor(
     }
 
     private fun handleNavigation(item: PlaybackQueueItem) {
-        val now = System.currentTimeMillis()
-        val timeSinceLast = now - lastNavigationTime
-        lastNavigationTime = now
-
         recordSkippedForCurrentIfNeeded(item.songLookup)
 
         _manualErrorMessage.value = null
         _isResolvingNextSong.value = true
-        val cached = resolvedSongs[item.songLookup]
-        _nowPlaying.value = NowPlayingInfo(
-            songId = cached?.id ?: 0L,
-            songLookup = item.songLookup,
-            title = item.title,
-            artistName = item.artistName,
-            imageKey = item.imageKey,
-            durationMs = item.durationMs,
-            streamingUrl = ""
-        )
+        _nowPlaying.value = buildPlaceholderNowPlaying(item)
 
-        val isBurst = timeSinceLast <= NAVIGATION_DEBOUNCE_MS || pendingNavigationJob?.isActive == true
-        pendingNavigationJob?.cancel()
-
-        if (!isBurst) {
-            playQueueItem(item)
-            return
-        }
-
-        pendingNavigationJob = scope.launch {
-            delay(NAVIGATION_DEBOUNCE_MS)
-            playQueueItem(item)
-        }
+        navigationController.navigate { playQueueItem(item) }
     }
 
     fun playQueueIndex(index: Int) {
@@ -406,48 +357,37 @@ class PlaybackManager @Inject constructor(
     }
 
     private fun playQueueItem(item: PlaybackQueueItem) {
+        ttfpTracker.start(item.songLookup, "queue")
         Log.d(PLAYBACK_TAG, "playQueueItem: lookup=${item.songLookup}")
 
-        recordSkippedForCurrentIfNeeded(item.songLookup)
-
         hasEndedHandled = false
-        acquireTransitionWakeLock()
+        transitionWakeLock.acquire()
         _manualErrorMessage.value = null
 
-        val cached = resolvedSongs[item.songLookup]
-        if (cached != null && !isStreamingUrlExpired(cached)) {
+        val cached = resolvedCache.get(item.songLookup)
+        if (cached != null && !urlRefresher.isExpired(cached)) {
             _isResolvingNextSong.value = false
-            startMediaService()
+            mediaServiceController.start()
             playSong(cached, forceRestart = true)
-            releaseTransitionWakeLock()
+            transitionWakeLock.release()
             return
         }
 
         _isResolvingNextSong.value = true
-
-        _nowPlaying.value = NowPlayingInfo(
-            songId = cached?.id ?: 0L,
-            songLookup = item.songLookup,
-            title = item.title,
-            artistName = item.artistName,
-            imageKey = item.imageKey,
-            durationMs = item.durationMs,
-            streamingUrl = ""
-        )
+        _nowPlaying.value = buildPlaceholderNowPlaying(item, cached)
 
         resolveSongJob?.cancel()
-
         resolveSongJob = scope.launch {
             try {
                 val result = if (cached != null) {
-                    refreshIfExpired(cached)
+                    urlRefresher.refreshIfExpired(cached) { currentVideoId() == item.songLookup }
                 } else {
-                    getSongUseCase(item.songLookup)
+                    getSongUseCase(item.songLookup, item.toLookupHint())
                 }
                 result.onSuccess { song ->
                     _isResolvingNextSong.value = false
-                    resolvedSongs[item.songLookup] = song
-                    startMediaService()
+                    resolvedCache.put(item.songLookup, song)
+                    mediaServiceController.start()
                     playSong(song, forceRestart = true)
                 }
                 result.onFailure { error ->
@@ -461,83 +401,62 @@ class PlaybackManager @Inject constructor(
                 Log.e(PLAYBACK_TAG, "Exception resolviendo cancion: ${e.message}", e)
                 _isResolvingNextSong.value = false
             } finally {
-                releaseTransitionWakeLock()
+                transitionWakeLock.release()
+            }
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (resolveSongJob === job) resolveSongJob = null
             }
         }
     }
 
-    private fun isStreamingUrlExpired(song: Song): Boolean {
-        if (song.streamingUrl.isNullOrBlank()) return true
-        val expiresAt = song.streamingUrlExpiresAt ?: return false
-        return expiresAt.isBefore(Instant.now())
-    }
-
-    private suspend fun refreshIfExpired(song: Song): Result<Song> {
-        if (!isStreamingUrlExpired(song)) return Result.success(song)
+    private fun forceRefreshAndPlay(song: Song, forceRestart: Boolean) {
         val videoId = song.hlsMasterKey
-        return refreshStreamingUrlUseCase(
-            currentSong = song,
-            isStillCurrent = { currentVideoId() == videoId }
-        )
-    }
-
-    private fun prefetchNextSong() {
-        prefetchJob?.cancel()
-        val nextItem = queueController.peekNext() ?: return
-        val cached = resolvedSongs[nextItem.songLookup]
-
-        if (cached != null && !isStreamingUrlExpired(cached)) {
-            prefetchAudio(cached)
-            return
-        }
-
-        prefetchJob = scope.launch {
+        _isResolvingNextSong.value = true
+        scope.launch {
             try {
-                val result = if (cached != null) {
-                    refreshIfExpired(cached)
-                } else {
-                    getSongUseCase(nextItem.songLookup)
+                val result = urlRefresher.forceRefresh(song) {
+                    currentVideoId() == videoId
                 }
-                result.onSuccess { song ->
-                    resolvedSongs[nextItem.songLookup] = song
-                    Log.d(PLAYBACK_TAG, "Prefetch OK: ${nextItem.songLookup}")
-                    prefetchAudio(song)
+                result.onSuccess { fresh ->
+                    _isResolvingNextSong.value = false
+                    resolvedCache.put(fresh.hlsMasterKey, fresh)
+                    playSong(fresh, forceRestart)
                 }
                 result.onFailure { error ->
-                    Log.w(PLAYBACK_TAG, "Prefetch fallo (no critico) ${nextItem.songLookup}: ${error.message}")
+                    Log.e(PLAYBACK_TAG, "Force refresh fallo $videoId: ${error.message}")
+                    _isResolvingNextSong.value = false
+                    _manualErrorMessage.value = "No se pudo cargar la cancion."
                 }
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
-                Log.w(PLAYBACK_TAG, "Prefetch exception (no critico) ${nextItem.songLookup}: ${e.message}")
+                Log.e(PLAYBACK_TAG, "Force refresh exception $videoId: ${e.message}", e)
+                _isResolvingNextSong.value = false
+                _manualErrorMessage.value = "No se pudo cargar la cancion."
             }
         }
     }
 
-    private fun prefetchAudio(song: Song) {
-        val url = song.streamingUrl ?: return
-        if (url.isBlank()) return
-        mediaPrefetcher.prefetch(url)
-    }
-
     private suspend fun handleSourceRefresh(lookup: String) {
         Log.d(PLAYBACK_TAG, "URL expirada detectada por player, refrescando: $lookup")
-        acquireTransitionWakeLock()
+        transitionWakeLock.acquire()
         _manualErrorMessage.value = null
         _isResolvingNextSong.value = true
         try {
-            val currentSong = resolvedSongs[lookup]
+            val currentSong = resolvedCache.get(lookup)
             val result = if (currentSong != null) {
-                refreshStreamingUrlUseCase(
-                    currentSong = currentSong,
-                    isStillCurrent = { currentVideoId() == lookup }
-                )
+                urlRefresher.forceRefresh(currentSong) { currentVideoId() == lookup }
             } else {
-                getSongUseCase(lookup)
+                val queueHint = queueController.current()
+                    ?.takeIf { it.songLookup == lookup }
+                    ?.toLookupHint()
+                    ?: SongLookupHint.Unknown
+                getSongUseCase(lookup, queueHint)
             }
             result.onSuccess { song ->
                 _isResolvingNextSong.value = false
-                resolvedSongs[lookup] = song
+                resolvedCache.put(lookup, song)
                 playSong(song, forceRestart = true)
             }
             result.onFailure { error ->
@@ -552,54 +471,37 @@ class PlaybackManager @Inject constructor(
             _isResolvingNextSong.value = false
             _manualErrorMessage.value = "No se pudo refrescar el stream."
         } finally {
-            releaseTransitionWakeLock()
+            transitionWakeLock.release()
         }
     }
 
     private fun replayCurrentSong() {
         val info = _nowPlaying.value ?: return
-        val song = resolvedSongs[info.songLookup]
+        val song = resolvedCache.get(info.songLookup)
         if (song != null) {
-            playSong(song, forceRestart = true)
-        } else {
-            val index = queueController.currentIndex()
-            if (index >= 0) playQueueIndex(index)
-        }
-    }
-
-    private suspend fun handleErrorRecoveryStep() {
-        val waitMs = if (errorRecoveryAttempts == 0) {
-            ERROR_RECOVERY_INITIAL_DELAY_MS
-        } else {
-            ERROR_RECOVERY_BETWEEN_ATTEMPTS_MS
-        }
-        delay(waitMs)
-
-        if (audioPlayerEngine.state.value.errorMessage == null) {
-            return
-        }
-
-        if (errorRecoveryAttempts >= MAX_ERROR_RECOVERY_ATTEMPTS) {
-            if (queueController.canGoNext) {
-                Log.d(
-                    PLAYBACK_TAG,
-                    "Agotados $MAX_ERROR_RECOVERY_ATTEMPTS intentos sin recuperacion, saltando a la siguiente cancion"
-                )
-                errorRecoveryAttempts = 0
-                lastStablePlaybackStartMs = 0L
-                goNext()
+            if (urlRefresher.isExpired(song)) {
+                forceRefreshAndPlay(song, forceRestart = true)
+            } else {
+                playSong(song, forceRestart = true)
             }
             return
         }
-
-        errorRecoveryAttempts++
-        Log.d(
-            PLAYBACK_TAG,
-            "Intento de recuperacion $errorRecoveryAttempts/$MAX_ERROR_RECOVERY_ATTEMPTS"
-        )
-        lastStablePlaybackStartMs = 0L
-        audioPlayerEngine.resume()
+        val index = queueController.currentIndex()
+        if (index >= 0) playQueueIndex(index)
     }
+
+    private fun buildPlaceholderNowPlaying(
+        item: PlaybackQueueItem,
+        cached: Song? = resolvedCache.get(item.songLookup)
+    ): NowPlayingInfo = NowPlayingInfo(
+        songId = cached?.id ?: item.songId ?: 0L,
+        songLookup = item.songLookup,
+        title = item.title,
+        artistName = item.artistName,
+        imageKey = item.imageKey,
+        durationMs = item.durationMs,
+        streamingUrl = ""
+    )
 
     fun onAppForeground() {
         Log.d(PLAYBACK_TAG, "App en foreground, delegando lifecycle a Media3.")
@@ -607,39 +509,5 @@ class PlaybackManager @Inject constructor(
 
     fun onAppBackground() {
         Log.d(PLAYBACK_TAG, "App en background, delegando lifecycle a Media3.")
-    }
-
-    private fun acquireTransitionWakeLock() {
-        if (!transitionWakeLock.isHeld) {
-            transitionWakeLock.acquire(WAKELOCK_TIMEOUT_MS)
-        }
-    }
-
-    private fun releaseTransitionWakeLock() {
-        if (transitionWakeLock.isHeld) transitionWakeLock.release()
-    }
-
-    private fun startMediaService() {
-        try {
-            val intent = Intent(context, MediaPlaybackService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-            Log.d(PLAYBACK_TAG, "MediaPlaybackService iniciado")
-        } catch (e: Exception) {
-            Log.e(PLAYBACK_TAG, "Error iniciando MediaPlaybackService: ${e.message}", e)
-        }
-    }
-
-    private fun stopMediaService() {
-        try {
-            val intent = Intent(context, MediaPlaybackService::class.java)
-            context.stopService(intent)
-            Log.d(PLAYBACK_TAG, "MediaPlaybackService detenido")
-        } catch (e: Exception) {
-            Log.e(PLAYBACK_TAG, "Error deteniendo MediaPlaybackService: ${e.message}", e)
-        }
     }
 }

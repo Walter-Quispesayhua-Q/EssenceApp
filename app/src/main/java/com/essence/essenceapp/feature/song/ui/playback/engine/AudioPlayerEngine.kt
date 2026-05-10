@@ -29,6 +29,13 @@ private const val AUDIO_TAG = "AUDIO_DEBUG"
 private const val MAX_RETRY_COUNT = 3
 private const val RETRY_DELAY_MS = 1_000L
 
+// Fade-in cuadrático: 16 pasos × 15 ms ≈ 240 ms.
+// El producto debe quedar ≤ 300 ms para no introducir latencia perceptible
+// adicional sobre el tiempo de arranque (TTFP).
+private const val FADE_IN_STEPS = 16
+private const val FADE_IN_STEP_DELAY_MS = 15L
+private const val FADE_IN_SAFETY_TIMEOUT_MS = 4_000L
+
 /**
  * Wrapper de alto nivel sobre [ExoPlayer] que expone la reproduccion como
  * un [StateFlow] de [AudioPlayerState] reactivo.
@@ -84,12 +91,15 @@ class AudioPlayerEngine @Inject constructor(
     val state: StateFlow<AudioPlayerState> = _state.asStateFlow()
 
     private var player: ExoPlayer? = null
+    private var playerListener: Player.Listener? = null
     private var positionJob: Job? = null
     private var fadeInJob: Job? = null
+    private var fadeInSafetyJob: Job? = null
     private var currentUrl: String? = null
     private var currentUsesAuthHeader: Boolean = false
     private var repeatMode: PlaybackRepeatMode = PlaybackRepeatMode.Off
     private var retryCount: Int = 0
+    private var pendingFadeIn: Boolean = false
 
     fun getPlayerOrNull(): ExoPlayer? = player
 
@@ -124,10 +134,29 @@ class AudioPlayerEngine @Inject constructor(
         val exo = getOrCreatePlayer(useAuthHeader)
 
         if (!forceRestart && currentUrl == url && exo.currentMediaItem != null) {
+            // Misma URL ya cargada: garantizar volumen normal por si
+            // quedó a media rampa de un fade-in previo cancelado.
+            fadeInJob?.cancel()
+            fadeInJob = null
+            fadeInSafetyJob?.cancel()
+            fadeInSafetyJob = null
+            pendingFadeIn = false
+            exo.volume = 1f
             exo.playWhenReady = true
             updateState()
             return
         }
+
+        // Silenciar ANTES de prepare() para evitar que el AudioTrack
+        // emita los primeros samples del nuevo media a volumen completo
+        // (causaba un "golpe fuerte" perceptible al cambiar canción).
+        // El fade-in del listener subirá de 0 a 1 al llegar STATE_READY.
+        fadeInJob?.cancel()
+        fadeInJob = null
+        fadeInSafetyJob?.cancel()
+        exo.volume = 0f
+        pendingFadeIn = true
+        armFadeInSafety(exo)
 
         currentUrl = url
         retryCount = 0
@@ -171,6 +200,9 @@ class AudioPlayerEngine @Inject constructor(
     fun resume() {
         fadeInJob?.cancel()
         fadeInJob = null
+        fadeInSafetyJob?.cancel()
+        fadeInSafetyJob = null
+        pendingFadeIn = false
         val exo = player ?: return
         exo.volume = 1f
         when (exo.playbackState) {
@@ -193,6 +225,9 @@ class AudioPlayerEngine @Inject constructor(
     fun pause() {
         fadeInJob?.cancel()
         fadeInJob = null
+        fadeInSafetyJob?.cancel()
+        fadeInSafetyJob = null
+        pendingFadeIn = false
         player?.let {
             it.volume = 1f
             it.playWhenReady = false
@@ -204,6 +239,9 @@ class AudioPlayerEngine @Inject constructor(
         stopPositionTracking()
         fadeInJob?.cancel()
         fadeInJob = null
+        fadeInSafetyJob?.cancel()
+        fadeInSafetyJob = null
+        pendingFadeIn = false
         player?.stop()
         player?.clearMediaItems()
         currentUrl = null
@@ -231,22 +269,72 @@ class AudioPlayerEngine @Inject constructor(
 
     fun release() {
         stop()
+        playerListener?.let { listener -> player?.removeListener(listener) }
+        playerListener = null
         player?.release()
         player = null
     }
 
     /**
-     * Fade-in suave (~200ms) para suavizar el transitorio inicial del
-     * AudioTrack/decoder. No soluciona la raíz, pero enmascara el
-     * "click" o "raspado" de arranque sin perder contenido audible.
+     * Aplica una rampa de volumen ascendente (~240ms) con curva cuadrática
+     * para suavizar el transitorio inicial del
+     * [androidx.media3.exoplayer.audio.MediaCodecAudioRenderer] y el
+     * AudioTrack subyacente.
+     *
+     * ## Curva cuadrática vs lineal
+     *
+     * El oído humano percibe la sonoridad de forma logarítmica (decibelios).
+     * Una rampa **lineal** en amplitud suena rápida al inicio y "estancada"
+     * al final; una rampa **cuadrática** (`v = t²`) compensa esa percepción
+     * y se siente como una entrada uniforme y natural.
+     *
+     * 16 pasos × 15ms = 240ms total. El primer paso queda en ~0.4% de
+     * amplitud (inaudible), lo que enmascara mejor el "click" del decoder
+     * sin perder contenido perceptible al oyente.
+     *
+     * ## Resiliencia
+     *
+     * - Captura el [target] por parámetro y compara con [player] en cada
+     *   iteración: si entre la programación del fade y su ejecución se
+     *   recicló el player (cambio de auth header en una nueva canción), la
+     *   corrutina aborta sin tocar el player viejo (ya released).
+     * - Captura silenciosa de [IllegalStateException]: el contrato de
+     *   [ExoPlayer.setVolume] permite excepciones si el player fue released
+     *   entre el check y la asignación (race window).
      */
-    private fun fadeInPlayer(exo: ExoPlayer) {
+    private fun fadeInPlayer(target: ExoPlayer) {
         fadeInJob?.cancel()
+        fadeInSafetyJob?.cancel()
+        fadeInSafetyJob = null
         fadeInJob = scope.launch {
-            exo.volume = 0f
-            repeat(10) { step ->
-                exo.volume = (step + 1) / 10f
-                delay(20L)
+            try {
+                if (player !== target) return@launch
+                target.volume = 0f
+                val steps = FADE_IN_STEPS
+                repeat(steps) { index ->
+                    if (player !== target) return@launch
+                    val t = (index + 1).toFloat() / steps
+                    target.volume = t * t
+                    delay(FADE_IN_STEP_DELAY_MS)
+                }
+                if (player === target) target.volume = 1f
+            } catch (_: IllegalStateException) {
+                // Player released entre el check y la asignación: silencioso.
+            }
+        }
+    }
+
+    private fun armFadeInSafety(target: ExoPlayer) {
+        fadeInSafetyJob?.cancel()
+        fadeInSafetyJob = scope.launch {
+            delay(FADE_IN_SAFETY_TIMEOUT_MS)
+            if (!pendingFadeIn) return@launch
+            if (player !== target) return@launch
+            Log.w(AUDIO_TAG, "Fade-in pendiente tras ${FADE_IN_SAFETY_TIMEOUT_MS}ms, restableciendo volumen")
+            pendingFadeIn = false
+            try {
+                target.volume = 1f
+            } catch (_: IllegalStateException) {
             }
         }
     }
@@ -291,22 +379,32 @@ class AudioPlayerEngine @Inject constructor(
 
         stopPositionTracking()
         fadeInJob?.cancel()
+        fadeInJob = null
+        fadeInSafetyJob?.cancel()
+        fadeInSafetyJob = null
+        pendingFadeIn = false
+        // Remover listener ANTES de release() para evitar callbacks
+        // sobre un player ya liberado y posibles fugas de referencia
+        // (ver androidx/media#2338 y #2993).
+        playerListener?.let { listener -> player?.removeListener(listener) }
+        playerListener = null
         player?.release()
+        player = null
 
         return exoPlayerFactory.create(useAuthHeader).also { exo ->
             player = exo
             currentUsesAuthHeader = useAuthHeader
             exo.repeatMode = repeatMode.toExoRepeatMode()
 
-            exo.addListener(object : Player.Listener {
+            val listener = object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     updateState()
 
-                    // Fade-in al arranque para suavizar transitorio inicial
                     if (playbackState == Player.STATE_READY &&
                         exo.playWhenReady &&
-                        exo.currentPosition < 250L
+                        pendingFadeIn
                     ) {
+                        pendingFadeIn = false
                         fadeInPlayer(exo)
                     }
                 }
@@ -387,7 +485,9 @@ class AudioPlayerEngine @Inject constructor(
                         )
                     }
                 }
-            })
+            }
+            playerListener = listener
+            exo.addListener(listener)
         }
     }
 

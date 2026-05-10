@@ -2,6 +2,7 @@ package com.essence.essenceapp.shared.playback.model
 
 data class PlaybackQueueItem(
     val songLookup: String,
+    val songId: Long? = null,
     val title: String,
     val artistName: String,
     val imageKey: String?,

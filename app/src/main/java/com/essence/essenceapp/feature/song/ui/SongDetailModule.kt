@@ -7,6 +7,8 @@ import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.RefreshStreamingUrlUseCase
+import com.essence.essenceapp.feature.song.ui.playback.engine.MediaPrefetcher
+import com.essence.essenceapp.shared.streaming.AudioPrewarmPort
 import com.essence.essenceapp.shared.streaming.StreamingUrlSyncManager
 import dagger.Module
 import dagger.Provides
@@ -26,11 +28,16 @@ object SongDetailModule {
 
     @Provides
     @Singleton
+    fun provideAudioPrewarmPort(prefetcher: MediaPrefetcher): AudioPrewarmPort = prefetcher
+
+    @Provides
+    @Singleton
     fun provideSongRepository(
         apiService: SongApiService,
-        streamingUrlSyncManager: StreamingUrlSyncManager
+        streamingUrlSyncManager: StreamingUrlSyncManager,
+        audioPrewarmPort: AudioPrewarmPort
     ): SongRepository =
-        SongRepositoryImpl(apiService, streamingUrlSyncManager)
+        SongRepositoryImpl(apiService, streamingUrlSyncManager, audioPrewarmPort)
 
     @Provides
     fun provideGetSongUseCase(repo: SongRepository): GetSongUseCase =

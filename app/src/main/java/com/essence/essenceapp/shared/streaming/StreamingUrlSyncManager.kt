@@ -3,6 +3,7 @@ package com.essence.essenceapp.shared.streaming
 import android.util.Log
 import com.essence.essenceapp.core.di.ApplicationScope
 import com.essence.essenceapp.feature.song.data.api.SongApiService
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +25,7 @@ class StreamingUrlSyncManager @Inject constructor(
     fun schedule(
         videoId: String,
         freshUrl: String,
+        freshExpiresAt: Instant?,
         isStillCurrent: () -> Boolean
     ) {
         pending[videoId]?.cancel()
@@ -34,10 +36,10 @@ class StreamingUrlSyncManager @Inject constructor(
                     Log.d(TAG, "Sync descartado (skip <${CONFIRM_DELAY_MS}ms): $videoId")
                     return@launch
                 }
-                val ok = attemptSync(videoId, freshUrl)
+                val ok = attemptSync(videoId, freshUrl, freshExpiresAt)
                 if (!ok && isStillCurrent()) {
                     delay(RETRY_DELAY_MS)
-                    if (isStillCurrent()) attemptSync(videoId, freshUrl)
+                    if (isStillCurrent()) attemptSync(videoId, freshUrl, freshExpiresAt)
                 }
             } catch (ce: CancellationException) {
                 throw ce
@@ -49,9 +51,13 @@ class StreamingUrlSyncManager @Inject constructor(
         }
     }
 
-    private suspend fun attemptSync(videoId: String, freshUrl: String): Boolean {
+    private suspend fun attemptSync(
+        videoId: String,
+        freshUrl: String,
+        freshExpiresAt: Instant?
+    ): Boolean {
         return try {
-            val response = songApiService.refreshStreamingUrl(videoId, freshUrl)
+            val response = songApiService.refreshStreamingUrl(videoId, freshUrl, freshExpiresAt)
             if (response.isSuccessful) {
                 Log.d(TAG, "Sync OK: $videoId")
                 true

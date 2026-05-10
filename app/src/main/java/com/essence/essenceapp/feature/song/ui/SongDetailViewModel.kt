@@ -2,6 +2,7 @@ package com.essence.essenceapp.feature.song.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.essence.essenceapp.feature.song.domain.model.SongLookupHint
 import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
@@ -9,6 +10,7 @@ import com.essence.essenceapp.feature.song.domain.usecase.RefreshStreamingUrlUse
 import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
 import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
 import com.essence.essenceapp.shared.cache.QueueCache
+import com.essence.essenceapp.shared.playback.mapper.toLookupHint
 import com.essence.essenceapp.shared.cache.SongDetailCache
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,6 +48,7 @@ class SongDetailViewModel @Inject constructor(
         observePlaybackState()
         observeQueue()
         observeNowPlaying()
+        observeCurrentSongLiked()
     }
 
     private fun observePlaybackState() {
@@ -100,9 +103,32 @@ class SongDetailViewModel @Inject constructor(
                 }
 
                 showLoadingForNextSong(info)
-                fetchSong(lookup = lookup, forceRestart = false)
+                fetchSong(lookup = lookup, hint = resolveHint(lookup), forceRestart = false)
             }
         }
+    }
+
+    private fun observeCurrentSongLiked() {
+        viewModelScope.launch {
+            playbackManager.isCurrentSongLiked.collect { isLiked ->
+                val current = _uiState.value as? SongDetailUiState.Success ?: return@collect
+                val nowPlayingId = playbackManager.nowPlaying.value?.songId ?: return@collect
+                if (nowPlayingId != current.song.id) return@collect
+                if (current.song.isLiked == isLiked) return@collect
+
+                val updatedSong = current.song.copy(isLiked = isLiked)
+                currentSongLookup?.let { songDetailCache.put(it, updatedSong) }
+                _uiState.value = current.copy(song = updatedSong)
+            }
+        }
+    }
+
+    private fun resolveHint(lookup: String): SongLookupHint {
+        return playbackManager.queue.value
+            ?.items
+            ?.firstOrNull { it.songLookup == lookup }
+            ?.toLookupHint()
+            ?: SongLookupHint.Unknown
     }
 
     // ACCIONES PÚBLICAS
@@ -131,14 +157,14 @@ class SongDetailViewModel @Inject constructor(
             _uiState.value = SongDetailUiState.Loading
         }
 
-        fetchSong(lookup = lookup, forceRestart = false)
+        fetchSong(lookup = lookup, hint = resolveHint(lookup), forceRestart = false)
     }
 
     fun onAction(action: SongDetailAction) {
         when (action) {
             SongDetailAction.Back -> Unit
             SongDetailAction.Refresh -> currentSongLookup?.let {
-                fetchSong(lookup = it, forceRestart = true)
+                fetchSong(lookup = it, hint = SongLookupHint.Unknown, forceRestart = true)
             }
             is SongDetailAction.OpenAlbum -> Unit
             is SongDetailAction.OpenArtist -> Unit
@@ -154,11 +180,11 @@ class SongDetailViewModel @Inject constructor(
 
     //  OBTENER CANCIÓN
 
-    private fun fetchSong(lookup: String, forceRestart: Boolean) {
+    private fun fetchSong(lookup: String, hint: SongLookupHint, forceRestart: Boolean) {
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
             try {
-                val result = getSongUseCase(lookup)
+                val result = getSongUseCase(lookup, hint)
 
                 if (lookup != currentSongLookup) return@launch
 
@@ -229,12 +255,16 @@ class SongDetailViewModel @Inject constructor(
             result.onSuccess {
                 val latest = _uiState.value as? SongDetailUiState.Success ?: return@onSuccess
                 val updatedSong = latest.song.copy(isLiked = !current.song.isLiked)
-                // Actualizar también el cache
                 currentSongLookup?.let { songDetailCache.put(it, updatedSong) }
                 _uiState.value = latest.copy(
                     song = updatedSong,
                     isLikeSubmitting = false
                 )
+
+                val nowPlayingId = playbackManager.nowPlaying.value?.songId
+                if (nowPlayingId == updatedSong.id) {
+                    playbackManager.updateLikedState(updatedSong.isLiked)
+                }
             }
 
             result.onFailure {

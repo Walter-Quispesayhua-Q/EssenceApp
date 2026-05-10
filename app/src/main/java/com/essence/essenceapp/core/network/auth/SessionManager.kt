@@ -27,6 +27,18 @@ class SessionManager @Inject constructor(
     val authRequiredEvents: SharedFlow<Unit> = _authRequiredEvents.asSharedFlow()
 
     fun onSessionExpired() {
+        clearAndEmit()
+    }
+
+    fun logout() {
+        clearAndEmit()
+    }
+
+    fun onAuthRequired() {
+        _authRequiredEvents.tryEmit(Unit)
+    }
+
+    private fun clearAndEmit() {
         if (!isHandlingExpiration.compareAndSet(false, true)) return
 
         scope.launch {
@@ -34,9 +46,5 @@ class SessionManager @Inject constructor(
             _sessionExpiredEvents.emit(Unit)
             isHandlingExpiration.set(false)
         }
-    }
-
-    fun onAuthRequired() {
-        _authRequiredEvents.tryEmit(Unit)
     }
 }
