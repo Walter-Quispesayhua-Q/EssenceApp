@@ -77,6 +77,15 @@ class PlaybackQueueController @Inject constructor() {
         return q.items.getOrNull(q.currentIndex + 1)
     }
 
+    fun peekUpcoming(count: Int): List<PlaybackQueueItem> {
+        if (count <= 0) return emptyList()
+        val q = _queue.value ?: return emptyList()
+        val from = q.currentIndex + 1
+        if (from > q.items.lastIndex) return emptyList()
+        val to = (from + count - 1).coerceAtMost(q.items.lastIndex)
+        return q.items.subList(from, to + 1)
+    }
+
     fun alignIndex(songLookup: String) {
         val q = _queue.value ?: return
         val foundIndex = q.items.indexOfFirst { it.songLookup == songLookup }

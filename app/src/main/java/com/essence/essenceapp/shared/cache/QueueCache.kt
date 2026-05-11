@@ -8,23 +8,53 @@ import javax.inject.Singleton
 @Singleton
 class QueueCache @Inject constructor() {
 
-    // @Volatile garantiza visibilidad cross-thread sin necesidad de
-    // sincronizacion en las lecturas. Las listas son inmutables, asi
-    // que las referencias se publican atomicamente.
-    @Volatile
-    private var items: List<SongSimple> = emptyList()
+    private val sources = LinkedHashMap<String, List<SongSimple>>(MAX_SOURCES, 0.75f, true)
 
-    @Synchronized
-    fun set(source: String, newItems: List<SongSimple>) {
+    fun set(source: String, newItems: List<SongSimple>) = synchronized(sources) {
         Log.d(TAG, "Set: $source (${newItems.size} items)")
-        items = newItems
+        if (sources.size >= MAX_SOURCES && !sources.containsKey(source)) {
+            val oldest = sources.keys.first()
+            sources.remove(oldest)
+            Log.d(TAG, "Evict (LRU slots): $oldest")
+        }
+        sources[source] = newItems
+        enforceTotalSongLimit(protectedSource = source)
     }
 
-    fun findItem(songLookup: String): SongSimple? {
-        return items.find { it.hlsMasterKey == songLookup }
+    private fun enforceTotalSongLimit(protectedSource: String) {
+        var total = sources.values.sumOf { it.size }
+        while (total > MAX_TOTAL_SONGS && sources.size > 1) {
+            val oldestKey = sources.keys.firstOrNull { it != protectedSource } ?: break
+            val removed = sources.remove(oldestKey) ?: break
+            total -= removed.size
+            Log.d(TAG, "Evict (LRU total): $oldestKey (-${removed.size} items, total=$total)")
+        }
+    }
+
+    fun findItem(songLookup: String): SongSimple? = synchronized(sources) {
+        val ordered = sources.entries.toList().asReversed()
+        for ((_, items) in ordered) {
+            val match = items.find { it.hlsMasterKey == songLookup }
+            if (match != null) return match
+        }
+        null
+    }
+
+    fun getSource(source: String): List<SongSimple>? = synchronized(sources) {
+        sources[source]
+    }
+
+    fun invalidate(source: String) = synchronized(sources) {
+        sources.remove(source)
+    }
+
+    fun clear() = synchronized(sources) {
+        sources.clear()
     }
 
     companion object {
         private const val TAG = "QueueCache"
+        private const val MAX_SOURCES = 10
+        private const val MAX_TOTAL_SONGS = 20_000
     }
 }

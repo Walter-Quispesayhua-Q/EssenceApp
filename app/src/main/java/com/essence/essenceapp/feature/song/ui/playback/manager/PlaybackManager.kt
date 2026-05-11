@@ -23,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +31,9 @@ import kotlinx.coroutines.launch
 
 private const val PLAYBACK_TAG = "PLAYBACK_DEBUG"
 private const val RESTART_THRESHOLD_MS = 3_000L
+private const val PREFETCH_WINDOW_SIZE = 2
+private const val MAX_CONSECUTIVE_RESOLUTION_SKIPS = 3
+private const val RESOLUTION_RETRY_DELAY_MS = 1_000L
 
 @Singleton
 class PlaybackManager @Inject constructor(
@@ -73,6 +77,7 @@ class PlaybackManager @Inject constructor(
     private var lastPositionMs: Long = 0L
     private var resolveSongJob: Job? = null
     private var sourceRefreshJob: Job? = null
+    private var consecutiveResolutionSkips: Int = 0
 
     @Volatile
     private var pauseRequestedDuringLoad: Boolean = false
@@ -87,6 +92,19 @@ class PlaybackManager @Inject constructor(
                 handlePlayerState(audioState)
             }
         }
+        scope.launch {
+            likeController.isLiked.collect { isLiked ->
+                syncLikedStateToCache(isLiked)
+            }
+        }
+    }
+
+    private fun syncLikedStateToCache(isLiked: Boolean) {
+        val info = _nowPlaying.value ?: return
+        if (info.songId <= 0L) return
+        val cached = resolvedCache.getBySongId(info.songId) ?: return
+        if (cached.isLiked == isLiked) return
+        resolvedCache.put(cached.hlsMasterKey, cached.copy(isLiked = isLiked))
     }
 
     private fun handlePlayerState(audioState: AudioPlayerState) {
@@ -162,6 +180,9 @@ class PlaybackManager @Inject constructor(
         errorRecovery.cancel()
         if (audioState.isPlaying) {
             errorRecovery.noteStablePlayback()
+            if (consecutiveResolutionSkips > 0) {
+                consecutiveResolutionSkips = 0
+            }
             ttfpTracker.reportIfPending(_nowPlaying.value?.songLookup)
         } else {
             errorRecovery.noteNoPlayback()
@@ -194,7 +215,8 @@ class PlaybackManager @Inject constructor(
                 Log.d(PLAYBACK_TAG, "Backend declaro URL nula para ${song.hlsMasterKey}, refresh certero")
                 forceRefreshAndPlay(song, forceRestart)
             } else {
-                Log.w(PLAYBACK_TAG, "streamingUrl ausente para ${song.hlsMasterKey} (transitorio)")
+                Log.w(PLAYBACK_TAG, "Cancion con metadata invalida ${song.hlsMasterKey}, intentando saltar")
+                skipToNextOnResolutionFailure(song.hlsMasterKey)
             }
             return
         }
@@ -238,7 +260,7 @@ class PlaybackManager @Inject constructor(
             audioPlayerEngine.pause()
         }
         mediaServiceController.start()
-        prefetchCoordinator.prefetchNext(queueController.peekNext())
+        prefetchCoordinator.prefetchUpcoming(queueController.peekUpcoming(PREFETCH_WINDOW_SIZE))
         urlRefresher.scheduleProactive(song) { fresh ->
             resolvedCache.put(fresh.hlsMasterKey, fresh)
         }
@@ -260,9 +282,11 @@ class PlaybackManager @Inject constructor(
         prefetchCoordinator.cancelAll()
         audioPlayerEngine.stop()
         errorRecovery.reset()
+        consecutiveResolutionSkips = 0
         _manualErrorMessage.value = null
         _nowPlaying.value = null
         mediaServiceController.stop()
+        resolvedCache.invalidateExpired { urlRefresher.isExpired(it) }
     }
 
     fun onAction(action: PlaybackAction) {
@@ -304,6 +328,7 @@ class PlaybackManager @Inject constructor(
     fun release() {
         prefetchCoordinator.cancelAll()
         audioPlayerEngine.release()
+        consecutiveResolutionSkips = 0
         _nowPlaying.value = null
         queueController.clear()
         resolvedCache.clear()
@@ -379,11 +404,7 @@ class PlaybackManager @Inject constructor(
         resolveSongJob?.cancel()
         resolveSongJob = scope.launch {
             try {
-                val result = if (cached != null) {
-                    urlRefresher.refreshIfExpired(cached) { currentVideoId() == item.songLookup }
-                } else {
-                    getSongUseCase(item.songLookup, item.toLookupHint())
-                }
+                val result = resolveQueueItemWithRetry(item, cached)
                 result.onSuccess { song ->
                     _isResolvingNextSong.value = false
                     resolvedCache.put(item.songLookup, song)
@@ -393,13 +414,14 @@ class PlaybackManager @Inject constructor(
                 result.onFailure { error ->
                     Log.e(PLAYBACK_TAG, "Error resolviendo cancion del queue: ${error.message}")
                     _isResolvingNextSong.value = false
-                    _manualErrorMessage.value = "No se pudo cargar la siguiente cancion."
+                    skipToNextOnResolutionFailure(item.songLookup)
                 }
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
                 Log.e(PLAYBACK_TAG, "Exception resolviendo cancion: ${e.message}", e)
                 _isResolvingNextSong.value = false
+                skipToNextOnResolutionFailure(item.songLookup)
             } finally {
                 transitionWakeLock.release()
             }
@@ -410,13 +432,67 @@ class PlaybackManager @Inject constructor(
         }
     }
 
+    private suspend fun resolveQueueItemWithRetry(
+        item: PlaybackQueueItem,
+        cached: Song?
+    ): Result<Song> {
+        val firstAttempt = attemptResolve(item, cached)
+        if (firstAttempt.isSuccess) return firstAttempt
+
+        Log.w(PLAYBACK_TAG, "Resolucion fallo, reintentando en ${RESOLUTION_RETRY_DELAY_MS}ms: ${item.songLookup}")
+        delay(RESOLUTION_RETRY_DELAY_MS)
+        if (currentVideoId() != item.songLookup && _nowPlaying.value?.songLookup != item.songLookup) {
+            return firstAttempt
+        }
+        return attemptResolve(item, cached)
+    }
+
+    private suspend fun attemptResolve(item: PlaybackQueueItem, cached: Song?): Result<Song> {
+        return if (cached != null) {
+            urlRefresher.refreshIfExpired(cached) { currentVideoId() == item.songLookup }
+        } else {
+            getSongUseCase(item.songLookup, item.toLookupHint())
+        }
+    }
+
+    private fun skipToNextOnResolutionFailure(failedLookup: String) {
+        consecutiveResolutionSkips++
+        if (consecutiveResolutionSkips > MAX_CONSECUTIVE_RESOLUTION_SKIPS) {
+            Log.w(PLAYBACK_TAG, "Limite de skips consecutivos alcanzado, deteniendo cola")
+            consecutiveResolutionSkips = 0
+            _manualErrorMessage.value = "No se pudieron cargar varias canciones consecutivas."
+            transitionWakeLock.release()
+            return
+        }
+
+        if (!queueController.canGoNext) {
+            Log.w(PLAYBACK_TAG, "Sin siguiente para saltar tras fallo: $failedLookup")
+            consecutiveResolutionSkips = 0
+            _manualErrorMessage.value = "No se pudo cargar la cancion."
+            transitionWakeLock.release()
+            return
+        }
+
+        Log.w(PLAYBACK_TAG, "Skip por fallo de resolucion ($consecutiveResolutionSkips/$MAX_CONSECUTIVE_RESOLUTION_SKIPS): $failedLookup")
+        goNext()
+    }
+
     private fun forceRefreshAndPlay(song: Song, forceRestart: Boolean) {
         val videoId = song.hlsMasterKey
         _isResolvingNextSong.value = true
         scope.launch {
             try {
-                val result = urlRefresher.forceRefresh(song) {
-                    currentVideoId() == videoId
+                val first = urlRefresher.forceRefresh(song) { currentVideoId() == videoId }
+                val result = if (first.isSuccess) {
+                    first
+                } else {
+                    Log.w(PLAYBACK_TAG, "Force refresh fallo, reintentando en ${RESOLUTION_RETRY_DELAY_MS}ms: $videoId")
+                    delay(RESOLUTION_RETRY_DELAY_MS)
+                    if (currentVideoId() != videoId) {
+                        first
+                    } else {
+                        urlRefresher.forceRefresh(song) { currentVideoId() == videoId }
+                    }
                 }
                 result.onSuccess { fresh ->
                     _isResolvingNextSong.value = false
@@ -424,16 +500,16 @@ class PlaybackManager @Inject constructor(
                     playSong(fresh, forceRestart)
                 }
                 result.onFailure { error ->
-                    Log.e(PLAYBACK_TAG, "Force refresh fallo $videoId: ${error.message}")
+                    Log.e(PLAYBACK_TAG, "Force refresh fallo definitivo $videoId: ${error.message}")
                     _isResolvingNextSong.value = false
-                    _manualErrorMessage.value = "No se pudo cargar la cancion."
+                    skipToNextOnResolutionFailure(videoId)
                 }
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
                 Log.e(PLAYBACK_TAG, "Force refresh exception $videoId: ${e.message}", e)
                 _isResolvingNextSong.value = false
-                _manualErrorMessage.value = "No se pudo cargar la cancion."
+                skipToNextOnResolutionFailure(videoId)
             }
         }
     }
