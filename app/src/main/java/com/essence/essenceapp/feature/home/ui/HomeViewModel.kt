@@ -8,7 +8,6 @@ import com.essence.essenceapp.feature.home.domain.usecase.ObserveHomeUseCase
 import com.essence.essenceapp.feature.home.domain.usecase.RefreshHomeUseCase
 import com.essence.essenceapp.feature.profile.domain.usecase.GetCurrentUserUseCase
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
-import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackHistoryRecorder
 import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,8 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -32,8 +29,7 @@ class HomeViewModel @Inject constructor(
     private val refreshHomeUseCase: RefreshHomeUseCase,
     private val getSongsOfHistoryUseCase: GetSongsOfHistoryUseCase,
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val tokenManager: TokenManager,
-    private val playbackHistoryRecorder: PlaybackHistoryRecorder
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     private val refreshing = MutableStateFlow(false)
@@ -83,7 +79,6 @@ class HomeViewModel @Inject constructor(
         loadCurrentUser()
         refreshHistory()
         refreshIfStale()
-        observeHistoryEvents()
     }
 
     fun refreshIfStale() {
@@ -91,12 +86,6 @@ class HomeViewModel @Inject constructor(
         val isFresh = System.currentTimeMillis() - lastSuccessfulRefreshAt < HOME_REFRESH_THRESHOLD_MS
         if (hasCache && isFresh) return
         refresh()
-    }
-
-    private fun observeHistoryEvents() {
-        playbackHistoryRecorder.historyRecorded
-            .onEach { refreshHistory() }
-            .launchIn(viewModelScope)
     }
 
     fun onRefresh() {

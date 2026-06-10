@@ -2,7 +2,11 @@ package com.essence.essenceapp.ui.shell
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.essence.essenceapp.core.network.ConnectivityEvent
+import com.essence.essenceapp.core.network.ConnectivityNotifier
 import com.essence.essenceapp.core.network.auth.SessionManager
+import com.essence.essenceapp.core.playback.PlaybackUiEvent
+import com.essence.essenceapp.core.playback.PlaybackUiNotifier
 import com.essence.essenceapp.core.storage.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -17,7 +21,9 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class MainShellViewModel @Inject constructor(
     private val tokenManager: TokenManager,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val connectivityNotifier: ConnectivityNotifier,
+    private val playbackUiNotifier: PlaybackUiNotifier
 ) : ViewModel() {
 
     private val _isLoggedIn = MutableStateFlow(false)
@@ -32,10 +38,21 @@ class MainShellViewModel @Inject constructor(
     private val _guestPlayEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val guestPlayEvent = _guestPlayEvent.asSharedFlow()
 
+    private val _connectivityEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val connectivityEvent = _connectivityEvent.asSharedFlow()
+
+    private val _unavailableSkippingEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val unavailableSkippingEvent = _unavailableSkippingEvent.asSharedFlow()
+
+    private var lastConnectivityNotifyAt: Long = 0L
+    private var lastUnavailableSkipNotifyAt: Long = 0L
+
     init {
         observeAuthState()
         observeSessionExpiration()
         observeAuthRequired()
+        observeConnectivity()
+        observePlaybackUi()
     }
 
     fun notifyGuestPlayAttempt() {
@@ -64,5 +81,39 @@ class MainShellViewModel @Inject constructor(
                 _authRequiredEvent.emit(Unit)
             }
         }
+    }
+
+    private fun observeConnectivity() {
+        viewModelScope.launch {
+            connectivityNotifier.events.collectLatest { event ->
+                if (event !is ConnectivityEvent.Unstable) return@collectLatest
+                val now = System.currentTimeMillis()
+                if (now - lastConnectivityNotifyAt >= CONNECTIVITY_NOTIFY_MIN_INTERVAL_MS) {
+                    lastConnectivityNotifyAt = now
+                    _connectivityEvent.emit(Unit)
+                }
+            }
+        }
+    }
+
+    private fun observePlaybackUi() {
+        viewModelScope.launch {
+            playbackUiNotifier.events.collectLatest { event ->
+                when (event) {
+                    is PlaybackUiEvent.UnavailableSkipping -> {
+                        val now = System.currentTimeMillis()
+                        if (now - lastUnavailableSkipNotifyAt >= UNAVAILABLE_SKIP_MIN_INTERVAL_MS) {
+                            lastUnavailableSkipNotifyAt = now
+                            _unavailableSkippingEvent.emit(event.songTitle)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private companion object {
+        const val CONNECTIVITY_NOTIFY_MIN_INTERVAL_MS = 5_000L
+        const val UNAVAILABLE_SKIP_MIN_INTERVAL_MS = 5_000L
     }
 }

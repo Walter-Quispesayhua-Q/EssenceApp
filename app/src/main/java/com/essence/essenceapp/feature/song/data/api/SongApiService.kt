@@ -18,9 +18,9 @@ interface SongApiService {
         const val BASE = "song"
     }
 
-    @GET("$BASE/{songLookup}")
+    @GET("$BASE/{hlsMasterKey}")
     suspend fun getSong(
-        @Path("songLookup") songLookup: String,
+        @Path("hlsMasterKey") hlsMasterKey: String,
         @Query("forceRefresh") forceRefresh: Boolean = false
     ): SongResponseApiDTO?
 
@@ -29,9 +29,9 @@ interface SongApiService {
         @Body request: SongSyncRequestApiDTO
     ): SongResponseApiDTO?
 
-    @PATCH("$BASE/{videoId}/streaming-url")
+    @PATCH("$BASE/{hlsMasterKey}/streaming-url")
     suspend fun refreshStreamingUrl(
-        @Path("videoId") videoId: String,
+        @Path("hlsMasterKey") hlsMasterKey: String,
         @Query("streamingUrl") streamingUrl: String,
         @Query("expiresAt") expiresAt: Instant? = null
     ): Response<Unit>

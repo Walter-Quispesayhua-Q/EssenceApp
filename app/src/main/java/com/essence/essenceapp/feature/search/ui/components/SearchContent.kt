@@ -82,8 +82,9 @@ import com.essence.essenceapp.ui.theme.LuxeGold
 import com.essence.essenceapp.ui.theme.MutedTeal
 import com.essence.essenceapp.ui.theme.PureWhite
 import com.essence.essenceapp.ui.theme.SoftRose
-import com.essence.essenceapp.shared.playback.mapper.toQueueItems
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackSource
+import com.essence.essenceapp.feature.playback.mapper.toQueueItems
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -579,10 +580,12 @@ private fun SearchSuccessContent(
                                 .clickable {
                                     onOpenSong(
                                         PlaybackOpenRequest(
-                                            songLookup = song.detailLookup,
-                                            queue = queueItems,
+                                            items = queueItems,
                                             startIndex = index,
-                                            sourceKey = "search:${state.form.query}:${state.form.type}"
+                                            source = PlaybackSource(
+                                                type = PlaybackSource.SourceType.SEARCH,
+                                                sourceId = "${state.form.query}:${state.form.type}"
+                                            )
                                         )
                                     )
                                 }

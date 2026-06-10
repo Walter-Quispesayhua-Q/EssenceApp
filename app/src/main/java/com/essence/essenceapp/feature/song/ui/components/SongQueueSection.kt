@@ -58,7 +58,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.essence.essenceapp.core.network.resolveImageUrl
-import com.essence.essenceapp.shared.playback.model.PlaybackQueueItem
+import com.essence.essenceapp.feature.playback.domain.PlaybackQueueItem
 import com.essence.essenceapp.ui.theme.GraphiteSurface
 import com.essence.essenceapp.ui.theme.MidnightBlack
 import com.essence.essenceapp.ui.theme.MutedTeal

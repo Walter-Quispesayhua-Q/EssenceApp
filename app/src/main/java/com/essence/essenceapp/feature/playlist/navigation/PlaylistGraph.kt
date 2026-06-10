@@ -7,17 +7,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.essence.essenceapp.feature.history.ui.HistoryScreen
+import com.essence.essenceapp.feature.playback.domain.PlaybackAction
+import com.essence.essenceapp.feature.playback.domain.PlaybackController
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.currentHlsMasterKey
 import com.essence.essenceapp.feature.playlist.ui.addsongs.PlaylistAddSongsScreen
 import com.essence.essenceapp.feature.playlist.ui.detail.PlaylistDetailScreen
 import com.essence.essenceapp.feature.playlist.ui.form.PlaylistFormSheet
 import com.essence.essenceapp.feature.playlist.ui.list.PlaylistListScreen
 import com.essence.essenceapp.feature.song.navigation.SongRoutes
-import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
 import com.essence.essenceapp.ui.shell.components.OffscreenSurface
 
 fun NavGraphBuilder.playlistGraph(
     navController: NavController,
-    playbackManager: PlaybackManager
+    playbackController: PlaybackController
 ) {
     navigation(
         route = PlaylistGraphRoutes.PLAYLIST_GRAPH,
@@ -45,12 +48,10 @@ fun NavGraphBuilder.playlistGraph(
                 HistoryScreen(
                     onBack = { navController.popBackStack() },
                     onOpenSong = { request ->
-                        playbackManager.setQueueFromItems(
-                            items = request.queue,
-                            startIndex = request.startIndex,
-                            sourceKey = request.sourceKey
-                        )
-                        navController.navigate(SongRoutes.detail(request.songLookup))
+                        playbackController.dispatch(PlaybackAction.Open(request))
+                        request.currentHlsMasterKey()?.let { hlsMasterKey ->
+                            navController.navigate(SongRoutes.detail(hlsMasterKey))
+                        }
                     }
                 )
             }
@@ -76,12 +77,10 @@ fun NavGraphBuilder.playlistGraph(
                         navController.navigate(PlaylistRoutes.addSongs(id))
                     },
                     onOpenSong = { request ->
-                        playbackManager.setQueueFromItems(
-                            items = request.queue,
-                            startIndex = request.startIndex,
-                            sourceKey = request.sourceKey
-                        )
-                        navController.navigate(SongRoutes.detail(request.songLookup))
+                        playbackController.dispatch(PlaybackAction.Open(request))
+                        request.currentHlsMasterKey()?.let { hlsMasterKey ->
+                            navController.navigate(SongRoutes.detail(hlsMasterKey))
+                        }
                     },
                     onBack = { navController.popBackStack() }
                 )

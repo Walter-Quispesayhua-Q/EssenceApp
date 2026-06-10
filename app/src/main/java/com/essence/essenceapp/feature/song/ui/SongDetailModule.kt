@@ -2,14 +2,13 @@ package com.essence.essenceapp.feature.song.ui
 
 import com.essence.essenceapp.feature.song.data.api.SongApiService
 import com.essence.essenceapp.feature.song.data.repository.SongRepositoryImpl
+import com.essence.essenceapp.feature.song.data.repository.resolver.known.KnownSongResolver
+import com.essence.essenceapp.feature.song.data.repository.resolver.unknown.UnknownSongResolver
 import com.essence.essenceapp.feature.song.domain.repository.SongRepository
 import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.RefreshStreamingUrlUseCase
-import com.essence.essenceapp.feature.song.ui.playback.engine.MediaPrefetcher
-import com.essence.essenceapp.shared.streaming.AudioPrewarmPort
-import com.essence.essenceapp.shared.streaming.StreamingUrlSyncManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,16 +27,16 @@ object SongDetailModule {
 
     @Provides
     @Singleton
-    fun provideAudioPrewarmPort(prefetcher: MediaPrefetcher): AudioPrewarmPort = prefetcher
-
-    @Provides
-    @Singleton
     fun provideSongRepository(
         apiService: SongApiService,
-        streamingUrlSyncManager: StreamingUrlSyncManager,
-        audioPrewarmPort: AudioPrewarmPort
+        unknownSongResolver: UnknownSongResolver,
+        knownSongResolver: KnownSongResolver
     ): SongRepository =
-        SongRepositoryImpl(apiService, streamingUrlSyncManager, audioPrewarmPort)
+        SongRepositoryImpl(
+            apiService = apiService,
+            unknownSongResolver = unknownSongResolver,
+            knownSongResolver = knownSongResolver
+        )
 
     @Provides
     fun provideGetSongUseCase(repo: SongRepository): GetSongUseCase =

@@ -18,7 +18,7 @@ datastore = "1.2.0"
 androidxNavigation = "2.9.7"
 coil = "2.6.0"
 media3 = "1.5.1"
-newpipeExtractor = "v0.26.0"
+newpipeExtractor = "v0.26.3"
 desugarJdkLibs = "2.1.4"
 coreSplashscreen = "1.0.1"
 

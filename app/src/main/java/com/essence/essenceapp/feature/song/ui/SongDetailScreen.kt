@@ -17,7 +17,7 @@ import com.essence.essenceapp.shared.ui.components.playlist.AddToPlaylistSheet
 
 @Composable
 fun SongDetailScreen(
-    songLookup: String,
+    hlsMasterKey: String,
     viewModel: SongDetailViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
     onOpenArtist: (String) -> Unit = {},
@@ -26,8 +26,8 @@ fun SongDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var playlistSheetSongKey by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(songLookup) {
-        viewModel.loadSong(songLookup)
+    LaunchedEffect(hlsMasterKey) {
+        viewModel.loadSong(hlsMasterKey)
     }
 
     SongDetailContent(

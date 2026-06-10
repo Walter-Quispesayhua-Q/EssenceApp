@@ -12,14 +12,14 @@ object AddSongMetadataExtractor {
     private const val TAG = "AddSongMetadataExtr"
     private const val YOUTUBE_MUSIC_BASE = "https://music.youtube.com/watch?v="
 
-    suspend fun extract(videoId: String): AddSongMetadata? = withContext(Dispatchers.IO) {
+    suspend fun extract(hlsMasterKey: String): AddSongMetadata? = withContext(Dispatchers.IO) {
         try {
             NewPipeInitializer.init()
-            val extractor = buildStreamExtractor(videoId)
+            val extractor = buildStreamExtractor(hlsMasterKey)
             extractor.fetchPage()
 
             AddSongMetadata(
-                videoId = videoId,
+                hlsMasterKey = hlsMasterKey,
                 title = extractor.name.orEmpty(),
                 durationMs = (extractor.length * 1000).toInt(),
                 uploaderName = extractor.uploaderName ?: "Unknown",
@@ -36,12 +36,12 @@ object AddSongMetadataExtractor {
                 }
             )
         } catch (e: Throwable) {
-            Log.e(TAG, "extract failed for $videoId: ${e.javaClass.simpleName} - ${e.message}")
+            Log.e(TAG, "extract failed for $hlsMasterKey: ${e.javaClass.simpleName} - ${e.message}")
             null
         }
     }
 
-    private fun buildStreamExtractor(videoId: String): StreamExtractor {
-        return ServiceList.YouTube.getStreamExtractor("$YOUTUBE_MUSIC_BASE$videoId")
+    private fun buildStreamExtractor(hlsMasterKey: String): StreamExtractor {
+        return ServiceList.YouTube.getStreamExtractor("$YOUTUBE_MUSIC_BASE$hlsMasterKey")
     }
 }

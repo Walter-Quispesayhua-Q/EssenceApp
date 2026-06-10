@@ -29,9 +29,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -62,7 +66,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.essence.essenceapp.core.network.resolveImageUrl
 import com.essence.essenceapp.feature.song.domain.model.Song
-import com.essence.essenceapp.feature.song.ui.playback.engine.AudioOutputType
+import com.essence.essenceapp.feature.playback.engine.AudioOutputType
 import com.essence.essenceapp.ui.theme.GraphiteSurface
 import com.essence.essenceapp.ui.theme.LuxeGold
 import com.essence.essenceapp.ui.theme.MidnightBlack
@@ -294,14 +298,34 @@ private fun AudioOutputTag(
         border = BorderStroke(1.dp, MutedTeal.copy(alpha = 0.70f))
     ) {
         Icon(
-            imageVector = audioOutput.icon,
-            contentDescription = audioOutput.label,
+            imageVector = audioOutput.icon(),
+            contentDescription = audioOutput.label(),
             tint = MutedTeal,
             modifier = Modifier
                 .padding(8.dp)
                 .size(16.dp)
         )
     }
+}
+
+private fun AudioOutputType.icon(): ImageVector = when (this) {
+    AudioOutputType.PHONE_SPEAKER -> Icons.Default.PhoneAndroid
+    AudioOutputType.WIRED_HEADPHONES,
+    AudioOutputType.WIRED_HEADSET -> Icons.Default.Headphones
+    AudioOutputType.BLUETOOTH_HEADSET,
+    AudioOutputType.BLUETOOTH_SPEAKER -> Icons.Default.Bluetooth
+    AudioOutputType.USB_AUDIO -> Icons.Default.Usb
+    AudioOutputType.UNKNOWN -> Icons.Default.MusicNote
+}
+
+private fun AudioOutputType.label(): String = when (this) {
+    AudioOutputType.PHONE_SPEAKER -> "Altavoz del telefono"
+    AudioOutputType.WIRED_HEADPHONES -> "Auriculares con cable"
+    AudioOutputType.WIRED_HEADSET -> "Auriculares con microfono"
+    AudioOutputType.BLUETOOTH_HEADSET -> "Bluetooth"
+    AudioOutputType.BLUETOOTH_SPEAKER -> "Altavoz Bluetooth"
+    AudioOutputType.USB_AUDIO -> "Audio USB"
+    AudioOutputType.UNKNOWN -> "Salida de audio"
 }
 
 @Composable

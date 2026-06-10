@@ -1,27 +1,19 @@
 package com.essence.essenceapp.feature.song.domain.usecase
 
 import com.essence.essenceapp.feature.song.domain.model.Song
-import com.essence.essenceapp.feature.song.domain.model.SongLookupHint
 import com.essence.essenceapp.feature.song.domain.repository.SongRepository
 import kotlinx.coroutines.CancellationException
 
 class GetSongUseCase(
     private val songRepository: SongRepository
 ) {
-    suspend operator fun invoke(
-        songLookup: String,
-        hint: SongLookupHint = SongLookupHint.Unknown
-    ): Result<Song> {
+    suspend operator fun invoke(hlsMasterKey: String): Result<Song> {
         return try {
-            val song = when (hint) {
-                SongLookupHint.Unknown -> songRepository.syncSong(songLookup)
-                is SongLookupHint.KnownPersisted -> songRepository.resolveSong(songLookup, hint.id)
-                SongLookupHint.KnownNotPersisted -> songRepository.resolveSong(songLookup, null)
-            }
+            val song = songRepository.syncSong(hlsMasterKey)
             if (song != null) {
                 Result.success(song)
             } else {
-                Result.failure(SongNotFoundException(songLookup))
+                Result.failure(SongPlaybackUnavailableException(hlsMasterKey))
             }
         } catch (ce: CancellationException) {
             throw ce
@@ -31,5 +23,8 @@ class GetSongUseCase(
     }
 }
 
-class SongNotFoundException(songLookup: String) :
-    Exception("Song not found: $songLookup")
+class SongNotFoundException(hlsMasterKey: String) :
+    Exception("Song not found: $hlsMasterKey")
+
+class SongPlaybackUnavailableException(hlsMasterKey: String) :
+    Exception("Playable stream unavailable for: $hlsMasterKey")

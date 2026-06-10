@@ -10,8 +10,9 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import com.essence.essenceapp.feature.playlist.ui.detail.componets.PlaylistDetailContent
-import com.essence.essenceapp.shared.playback.mapper.toQueueItems
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackSource
+import com.essence.essenceapp.feature.playback.mapper.toQueueItems
 
 @Composable
 fun PlaylistDetailScreen(
@@ -51,14 +52,16 @@ fun PlaylistDetailScreen(
                     val songs = (state as? PlaylistDetailUiState.Success)
                         ?.songs.orEmpty()
                     val queueItems = songs.toQueueItems()
-                    val index = songs.indexOfFirst { it.detailLookup == action.songLookup }
+                    val index = songs.indexOfFirst { it.detailLookup == action.hlsMasterKey }
                         .coerceAtLeast(0)
                     onOpenSong(
                         PlaybackOpenRequest(
-                            songLookup = action.songLookup,
-                            queue = queueItems,
+                            items = queueItems,
                             startIndex = index,
-                            sourceKey = "playlist:$playlistId"
+                            source = PlaybackSource(
+                                type = PlaybackSource.SourceType.PLAYLIST,
+                                sourceId = playlistId.toString()
+                            )
                         )
                     )
                 }

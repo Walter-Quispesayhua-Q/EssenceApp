@@ -49,7 +49,7 @@ internal fun PlaylistDetailSuccess(
     val bottomClearance = LocalBottomBarClearance.current
     val isSystem = PlaylistUtils.isSystemPlaylist(playlist.type)
     val canPlay = !isSongsLoading && songs.isNotEmpty()
-    val firstSongLookup = songs.firstOrNull()?.detailLookup
+    val firstHlsMasterKey = songs.firstOrNull()?.detailLookup
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(deleteError) {
@@ -85,7 +85,7 @@ internal fun PlaylistDetailSuccess(
                     onDelete = { onAction(PlaylistDetailAction.DeletePlaylist) },
                     onToggleLike = { onAction(PlaylistDetailAction.ToggleLike) },
                     onPlay = {
-                        firstSongLookup?.let { onAction(PlaylistDetailAction.OpenSong(it)) }
+                        firstHlsMasterKey?.let { onAction(PlaylistDetailAction.OpenSong(it)) }
                     },
                     onShuffle = {
                         if (songs.isNotEmpty()) {

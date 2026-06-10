@@ -52,16 +52,19 @@ class SearchViewModel @Inject constructor(
     fun onAction(action: SearchAction) {
         when (action) {
             is SearchAction.QueryChanged -> {
+                nextPageJob?.cancel()
                 updateEditing { it.copy(form = it.form.copy(query = action.value)) }
                 queryFlow.value = action.value
             }
 
             is SearchAction.TypeChanged -> {
+                nextPageJob?.cancel()
                 updateEditing { it.copy(form = it.form.copy(type = action.value)) }
                 typeFlow.value = action.value
             }
 
             SearchAction.Submit -> {
+                nextPageJob?.cancel()
                 queryFlow.value = currentForm().query
                 typeFlow.value = currentForm().type
             }
@@ -96,10 +99,19 @@ class SearchViewModel @Inject constructor(
             }
             .onEach { (result, queryAndType) ->
                 val (query, type) = queryAndType
+                if (!isLatestInput(query, type)) {
+                    return@onEach
+                }
+
+                val latestForm = SearchFormState(
+                    query = queryFlow.value,
+                    type = typeFlow.value
+                )
+
                 result.onSuccess { searchResult ->
                     cacheSongsForQueue(searchResult.songs.orEmpty())
                     _uiState.value = SearchUiState.Success(
-                        form = SearchFormState(query = query, type = type),
+                        form = latestForm,
                         results = searchResult,
                         page = 0,
                         isLoadingNextPage = false
@@ -220,6 +232,9 @@ class SearchViewModel @Inject constructor(
             _uiState.value = current.copy(isSubmitting = true, errorMessage = null)
         }
     }
+
+    private fun isLatestInput(query: String, type: String): Boolean =
+        queryFlow.value.trim() == query && typeFlow.value.trim() == type
 
     private fun revertToEditing() {
         val current = _uiState.value

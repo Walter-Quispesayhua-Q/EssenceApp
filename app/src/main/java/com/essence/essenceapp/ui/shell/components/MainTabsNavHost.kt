@@ -9,11 +9,11 @@ import com.essence.essenceapp.feature.artist.navigation.artistGraph
 import com.essence.essenceapp.feature.history.navigation.historyGraph
 import com.essence.essenceapp.feature.home.navigation.HomeGraphRoutes
 import com.essence.essenceapp.feature.home.navigation.homeGraph
+import com.essence.essenceapp.feature.playback.domain.PlaybackController
 import com.essence.essenceapp.feature.playlist.navigation.playlistGraph
 import com.essence.essenceapp.feature.profile.navigation.profileGraph
 import com.essence.essenceapp.feature.search.navigation.searchGraph
 import com.essence.essenceapp.feature.song.navigation.songGraph
-import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
 import com.essence.essenceapp.ui.shell.shellEnterTransition
 import com.essence.essenceapp.ui.shell.shellExitTransition
 import com.essence.essenceapp.ui.shell.shellPopEnterTransition
@@ -22,8 +22,8 @@ import com.essence.essenceapp.ui.shell.shellPopExitTransition
 @Composable
 fun MainTabsNavHost(
     navController: NavHostController,
+    playbackController: PlaybackController,
     modifier: Modifier = Modifier,
-    playbackManager: PlaybackManager,
     isLoggedIn: Boolean,
     onRequireAuth: () -> Unit,
     onGuestPlayAttempt: () -> Unit
@@ -39,7 +39,7 @@ fun MainTabsNavHost(
     ) {
         homeGraph(
             navController = navController,
-            playbackManager = playbackManager,
+            playbackController = playbackController,
             isLoggedIn = isLoggedIn,
             onRequireAuth = onRequireAuth,
             onGuestPlayAttempt = onGuestPlayAttempt
@@ -47,14 +47,14 @@ fun MainTabsNavHost(
 
         searchGraph(
             navController = navController,
-            playbackManager = playbackManager,
+            playbackController = playbackController,
             isLoggedIn = isLoggedIn,
             onGuestPlayAttempt = onGuestPlayAttempt
         )
 
         playlistGraph(
             navController = navController,
-            playbackManager = playbackManager
+            playbackController = playbackController
         )
 
         profileGraph()
@@ -67,20 +67,21 @@ fun MainTabsNavHost(
 
         artistGraph(
             navController = navController,
-            playbackManager = playbackManager,
+            playbackController = playbackController,
             isLoggedIn = isLoggedIn,
             onGuestPlayAttempt = onGuestPlayAttempt
         )
+
         albumGraph(
             navController = navController,
-            playbackManager = playbackManager,
+            playbackController = playbackController,
             isLoggedIn = isLoggedIn,
             onGuestPlayAttempt = onGuestPlayAttempt
         )
 
         historyGraph(
             navController = navController,
-            playbackManager = playbackManager,
+            playbackController = playbackController,
             isLoggedIn = isLoggedIn,
             onRequireAuth = onRequireAuth
         )

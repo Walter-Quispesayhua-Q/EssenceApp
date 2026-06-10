@@ -10,7 +10,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.essence.essenceapp.feature.history.ui.components.HistoryContent
 import com.essence.essenceapp.feature.history.ui.components.HistoryTopBar
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
 
 @Composable
 fun HistoryScreen(

@@ -5,10 +5,10 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import com.essence.essenceapp.core.extractor.NewPipeInitializer
+import com.essence.essenceapp.core.extractor.youtube.protocol.YoutubeProtocolInitializer
 import com.essence.essenceapp.core.network.BackendWarmer
-import com.essence.essenceapp.core.network.qualifier.NewPipeOkHttpClient
-import com.essence.essenceapp.feature.song.ui.playback.engine.MediaAudioCache
+import com.essence.essenceapp.feature.playback.cache.MediaAudioCache
+import com.essence.essenceapp.feature.playback.observers.PlaybackObserversStarter
 import com.essence.essenceapp.ui.resilience.GlobalExceptionHandler
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -18,14 +18,16 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import okhttp3.OkHttpClient
 
 @HiltAndroidApp
 class EssenceApp : Application(), ImageLoaderFactory {
 
     /**
-     * EntryPoint para acceder a beans de Hilt desde la clase Application,
-     * que no soporta inyeccion directa de fields con @Inject.
+     * Puentes para pedir objetos de Hilt desde Application.
+     *
+     * Application es creada por Android muy temprano y no recibe dependencias
+     * por constructor. Por eso usamos EntryPointAccessors para obtener solo los
+     * objetos que deben arrancar a nivel global de la app.
      */
     @EntryPoint
     @InstallIn(SingletonComponent::class)
@@ -41,15 +43,20 @@ class EssenceApp : Application(), ImageLoaderFactory {
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
-    interface NewPipeNetworkEntryPoint {
-        @NewPipeOkHttpClient
-        fun newPipeOkHttpClient(): OkHttpClient
+    interface YoutubeProtocolEntryPoint {
+        fun youtubeProtocolInitializer(): YoutubeProtocolInitializer
     }
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface BackendWarmerEntryPoint {
         fun backendWarmer(): BackendWarmer
+    }
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface PlaybackObserversEntryPoint {
+        fun playbackObserversStarter(): PlaybackObserversStarter
     }
 
     private val mediaAudioCache: MediaAudioCache by lazy {
@@ -66,11 +73,11 @@ class EssenceApp : Application(), ImageLoaderFactory {
         ).globalExceptionHandler()
     }
 
-    private val newPipeOkHttpClient: OkHttpClient by lazy {
+    private val youtubeProtocolInitializer: YoutubeProtocolInitializer by lazy {
         EntryPointAccessors.fromApplication(
             this,
-            NewPipeNetworkEntryPoint::class.java
-        ).newPipeOkHttpClient()
+            YoutubeProtocolEntryPoint::class.java
+        ).youtubeProtocolInitializer()
     }
 
     private val backendWarmer: BackendWarmer by lazy {
@@ -80,18 +87,39 @@ class EssenceApp : Application(), ImageLoaderFactory {
         ).backendWarmer()
     }
 
+    private val playbackObserversStarter: PlaybackObserversStarter by lazy {
+        EntryPointAccessors.fromApplication(
+            this,
+            PlaybackObserversEntryPoint::class.java
+        ).playbackObserversStarter()
+    }
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Arranque global de servicios livianos de la app.
+     *
+     * Aqui se instalan protecciones, se prepara el protocolo de YouTube para
+     * reducir el primer tiempo de extraccion, se calienta el backend y se
+     * activan observers pasivos de playback como historial y metricas.
+     */
     override fun onCreate() {
         super.onCreate()
+
         globalExceptionHandler.installAsDefault()
-        NewPipeInitializer.setOkHttpClient(newPipeOkHttpClient)
-        NewPipeInitializer.warmUp(appScope)
+
+        playbackObserversStarter.start()
+
+        youtubeProtocolInitializer.warmUp(appScope)
+
         backendWarmer.warmUp(appScope)
+
+        mediaAudioCache.warmUp(appScope)
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+
         if (level >= TRIM_MEMORY_COMPLETE) {
             mediaAudioCache.release()
         }

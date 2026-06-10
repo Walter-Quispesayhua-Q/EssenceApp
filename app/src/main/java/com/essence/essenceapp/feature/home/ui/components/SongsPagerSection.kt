@@ -23,9 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.essence.essenceapp.feature.song.domain.model.SongSimple
-import com.essence.essenceapp.shared.playback.mapper.toQueueItems
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
-import com.essence.essenceapp.shared.playback.model.PlaybackQueueItem
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackQueueItem
+import com.essence.essenceapp.feature.playback.domain.PlaybackSource
+import com.essence.essenceapp.feature.playback.mapper.toQueueItems
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
@@ -173,10 +174,12 @@ private fun SongsPage(
                     .clickable {
                         onOpenSong(
                             PlaybackOpenRequest(
-                                songLookup = song.detailLookup,
-                                queue = queueItems,
+                                items = queueItems,
                                 startIndex = pageStartIndex + index,
-                                sourceKey = sourceKey
+                                source = PlaybackSource(
+                                    type = PlaybackSource.SourceType.SINGLE,
+                                    sourceId = sourceKey
+                                )
                             )
                         )
                     }

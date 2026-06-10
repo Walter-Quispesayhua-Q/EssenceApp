@@ -1,8 +1,8 @@
 package com.essence.essenceapp.feature.search.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +59,7 @@ private val PillShape = RoundedCornerShape(22.dp)
 @Composable
 fun SearchTopBar(
     query: String,
+    isSearching: Boolean = false,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     activeTypeLabel: String? = null
@@ -66,12 +68,20 @@ fun SearchTopBar(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val borderAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 0.55f else 0.10f,
+        targetValue = when {
+            isFocused -> 0.55f
+            isSearching -> 0.36f
+            else -> 0.10f
+        },
         animationSpec = tween(280, easing = FastOutSlowInEasing),
         label = "border_alpha"
     )
     val glowAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 0.18f else 0.0f,
+        targetValue = when {
+            isFocused -> 0.18f
+            isSearching -> 0.12f
+            else -> 0.0f
+        },
         animationSpec = tween(280, easing = FastOutSlowInEasing),
         label = "glow_alpha"
     )
@@ -144,27 +154,46 @@ fun SearchTopBar(
                             fontWeight = FontWeight.Medium
                         ),
                         leadingIcon = {
-                            SearchLeadingIcon(isFocused = isFocused)
+                            SearchLeadingIcon(
+                                isFocused = isFocused,
+                                isSearching = isSearching
+                            )
                         },
                         trailingIcon = {
-                            FadeScaleVisibility(
-                                visible = query.isNotEmpty(),
-                                initialScale = 0.6f
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                IconButton(onClick = { onQueryChange("") }) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .clip(CircleShape)
-                                            .background(PureWhite.copy(alpha = 0.10f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Close,
-                                            contentDescription = "Limpiar",
-                                            tint = PureWhite.copy(alpha = 0.85f),
-                                            modifier = Modifier.size(14.dp)
-                                        )
+                                FadeScaleVisibility(
+                                    visible = isSearching,
+                                    initialScale = 0.8f
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = SoftRose
+                                    )
+                                }
+
+                                FadeScaleVisibility(
+                                    visible = query.isNotEmpty(),
+                                    initialScale = 0.6f
+                                ) {
+                                    IconButton(onClick = { onQueryChange("") }) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(26.dp)
+                                                .clip(CircleShape)
+                                                .background(PureWhite.copy(alpha = 0.10f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Close,
+                                                contentDescription = "Limpiar",
+                                                tint = PureWhite.copy(alpha = 0.85f),
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -213,20 +242,27 @@ private fun FadeScaleVisibility(
 }
 
 @Composable
-private fun SearchLeadingIcon(isFocused: Boolean) {
+private fun SearchLeadingIcon(
+    isFocused: Boolean,
+    isSearching: Boolean
+) {
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.05f else 1.0f,
+        targetValue = if (isFocused || isSearching) 1.05f else 1.0f,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "icon_scale"
     )
-    val tint = if (isFocused) SoftRose else PureWhite.copy(alpha = 0.55f)
+    val tint = if (isFocused || isSearching) SoftRose else PureWhite.copy(alpha = 0.55f)
 
     Box(
         modifier = Modifier
             .size(36.dp)
             .clip(CircleShape)
             .background(
-                if (isFocused) SoftRose.copy(alpha = 0.10f) else Color.Transparent
+                if (isFocused || isSearching) {
+                    SoftRose.copy(alpha = 0.10f)
+                } else {
+                    Color.Transparent
+                }
             ),
         contentAlignment = Alignment.Center
     ) {

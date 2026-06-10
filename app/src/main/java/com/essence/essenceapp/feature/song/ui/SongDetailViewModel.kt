@@ -2,35 +2,33 @@ package com.essence.essenceapp.feature.song.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.essence.essenceapp.feature.song.domain.model.SongLookupHint
+import com.essence.essenceapp.feature.playback.domain.NowPlayingInfo
+import com.essence.essenceapp.feature.playback.domain.PlaybackAction
+import com.essence.essenceapp.feature.playback.domain.PlaybackController
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackQueueItem
+import com.essence.essenceapp.feature.playback.domain.PlaybackSource
+import com.essence.essenceapp.feature.playback.domain.PlaybackState
+import com.essence.essenceapp.feature.playback.domain.PlaybackUiState
+import com.essence.essenceapp.feature.playback.mapper.toQueueItem
+import com.essence.essenceapp.feature.song.domain.model.Song
 import com.essence.essenceapp.feature.song.domain.usecase.AddLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.DeleteLikeSongUseCase
 import com.essence.essenceapp.feature.song.domain.usecase.GetSongUseCase
-import com.essence.essenceapp.feature.song.domain.usecase.RefreshStreamingUrlUseCase
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
-import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
 import com.essence.essenceapp.shared.cache.QueueCache
-import com.essence.essenceapp.shared.playback.mapper.toLookupHint
 import com.essence.essenceapp.shared.cache.SongDetailCache
-import com.essence.essenceapp.shared.ui.components.status.error.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.Instant
 import javax.inject.Inject
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import com.essence.essenceapp.feature.song.ui.playback.model.NowPlayingInfo
-
 
 @HiltViewModel
 class SongDetailViewModel @Inject constructor(
+    private val playbackController: PlaybackController,
     private val getSongUseCase: GetSongUseCase,
-    private val refreshStreamingUrlUseCase: RefreshStreamingUrlUseCase,
-    private val playbackManager: PlaybackManager,
     private val addLikeSongUseCase: AddLikeSongUseCase,
     private val deleteLikeSongUseCase: DeleteLikeSongUseCase,
     private val queueCache: QueueCache,
@@ -40,20 +38,32 @@ class SongDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<SongDetailUiState>(SongDetailUiState.Loading)
     val uiState: StateFlow<SongDetailUiState> = _uiState.asStateFlow()
 
-    private var currentSongLookup: String? = null
-    private var fetchJob: Job? = null
-
+    private var currentHlsMasterKey: String? = null
 
     init {
         observePlaybackState()
         observeQueue()
         observeNowPlaying()
-        observeCurrentSongLiked()
+        observeCurrentSong()
     }
 
     private fun observePlaybackState() {
         viewModelScope.launch {
-            playbackManager.uiState.collect { playback ->
+            playbackController.uiState.collect { playback ->
+                val failedMessage = (playback.playbackState as? PlaybackState.Failed)
+                    ?.cause
+                    ?.message
+
+                if (failedMessage != null) {
+                    val current = _uiState.value
+                    if (current is SongDetailUiState.Loading ||
+                        current is SongDetailUiState.LoadingNextSong
+                    ) {
+                        _uiState.value = SongDetailUiState.Error(failedMessage)
+                        return@collect
+                    }
+                }
+
                 when (val current = _uiState.value) {
                     is SongDetailUiState.Success ->
                         _uiState.value = current.copy(playback = playback)
@@ -67,13 +77,21 @@ class SongDetailViewModel @Inject constructor(
 
     private fun observeQueue() {
         viewModelScope.launch {
-            playbackManager.queue.collect { queue ->
-                val current = _uiState.value
-                if (current is SongDetailUiState.Success) {
-                    _uiState.value = current.copy(
-                        queueItems = queue?.items ?: emptyList(),
-                        queueCurrentIndex = queue?.currentIndex ?: -1
-                    )
+            playbackController.queue.collect { queue ->
+                val items = queue?.items ?: emptyList()
+                val index = queue?.currentIndex ?: -1
+                when (val current = _uiState.value) {
+                    is SongDetailUiState.Success ->
+                        _uiState.value = current.copy(
+                            queueItems = items,
+                            queueCurrentIndex = index
+                        )
+                    is SongDetailUiState.LoadingNextSong ->
+                        _uiState.value = current.copy(
+                            queueItems = items,
+                            queueCurrentIndex = index
+                        )
+                    else -> Unit
                 }
             }
         }
@@ -81,159 +99,106 @@ class SongDetailViewModel @Inject constructor(
 
     private fun observeNowPlaying() {
         viewModelScope.launch {
-            playbackManager.nowPlaying.drop(1).collect { info ->
-                val lookup = info?.songLookup ?: return@collect
-                if (lookup == currentSongLookup) return@collect
+            playbackController.nowPlaying.drop(1).collect { info ->
+                val lookup = info?.item?.hlsMasterKey ?: return@collect
+                if (lookup == currentHlsMasterKey) return@collect
 
-                currentSongLookup = lookup
-                fetchJob?.cancel()
-
-                val detailCached = songDetailCache.get(lookup)
-                if (detailCached != null) {
-                    showSuccess(detailCached)
-                    playbackManager.playSong(detailCached, forceRestart = false)
-                    return@collect
-                }
-
-                val resolved = playbackManager.getResolvedSong(lookup)
-                if (resolved != null) {
-                    songDetailCache.put(lookup, resolved)
-                    showSuccess(resolved)
-                    return@collect
-                }
+                currentHlsMasterKey = lookup
+                if (showResolvedSongIfAvailable(lookup)) return@collect
 
                 showLoadingForNextSong(info)
-                fetchSong(lookup = lookup, hint = resolveHint(lookup), forceRestart = false)
             }
         }
     }
 
-    private fun observeCurrentSongLiked() {
+    private fun observeCurrentSong() {
         viewModelScope.launch {
-            playbackManager.isCurrentSongLiked.collect { isLiked ->
-                val current = _uiState.value as? SongDetailUiState.Success ?: return@collect
-                val nowPlayingId = playbackManager.nowPlaying.value?.songId ?: return@collect
-                if (nowPlayingId != current.song.id) return@collect
-                if (current.song.isLiked == isLiked) return@collect
+            playbackController.currentSong.collect { song ->
+                if (song == null) return@collect
+                if (song.hlsMasterKey != currentHlsMasterKey) return@collect
 
-                val updatedSong = current.song.copy(isLiked = isLiked)
-                currentSongLookup?.let { songDetailCache.put(it, updatedSong) }
-                _uiState.value = current.copy(song = updatedSong)
+                songDetailCache.put(song.hlsMasterKey, song)
+                when (val current = _uiState.value) {
+                    is SongDetailUiState.Success -> {
+                        if (current.song != song) {
+                            _uiState.value = current.copy(song = song)
+                        }
+                    }
+                    else -> showSuccess(song)
+                }
             }
         }
     }
 
-    private fun resolveHint(lookup: String): SongLookupHint {
-        return playbackManager.queue.value
-            ?.items
-            ?.firstOrNull { it.songLookup == lookup }
-            ?.toLookupHint()
-            ?: SongLookupHint.Unknown
-    }
-
-    // ACCIONES PÚBLICAS
     fun loadSong(lookup: String) {
-        currentSongLookup = lookup
+        currentHlsMasterKey = lookup
 
-        val detailCached = songDetailCache.get(lookup)
-        if (detailCached != null) {
-            showSuccess(detailCached)
-            playbackManager.playSong(detailCached, forceRestart = false)
+        val cached = songDetailCache.get(lookup)
+        if (cached != null) {
+            showSuccess(cached)
+            openSingleIfNeeded(cached)
             return
         }
 
-        val queueCached = queueCache.findItem(lookup)
-        if (queueCached != null) {
-            _uiState.value = SongDetailUiState.LoadingNextSong(
-                title = queueCached.title,
-                artistName = queueCached.artistName,
-                imageKey = queueCached.imageKey,
-                durationMs = queueCached.durationMs.toLong(),
-                playback = playbackManager.uiState.value.copy(
-                    durationMs = queueCached.durationMs.toLong()
-                )
-            )
-        } else {
-            _uiState.value = SongDetailUiState.Loading
+        val resolved = playbackController.currentSong.value
+        if (resolved != null && resolved.hlsMasterKey == lookup) {
+            songDetailCache.put(lookup, resolved)
+            showSuccess(resolved)
+            return
         }
 
-        fetchSong(lookup = lookup, hint = resolveHint(lookup), forceRestart = false)
+        showPreviewFor(lookup)
+
+        if (isCurrentPlaybackLookup(lookup)) {
+            return
+        }
+
+        viewModelScope.launch { fetchSongDetail(lookup) }
     }
 
     fun onAction(action: SongDetailAction) {
         when (action) {
             SongDetailAction.Back -> Unit
-            SongDetailAction.Refresh -> currentSongLookup?.let {
-                fetchSong(lookup = it, hint = SongLookupHint.Unknown, forceRestart = true)
+            SongDetailAction.Refresh -> currentHlsMasterKey?.let { lookup ->
+                showPreviewFor(lookup)
+
+                if (isCurrentPlaybackLookup(lookup)) {
+                    playbackController.dispatch(PlaybackAction.Play)
+                } else {
+                    viewModelScope.launch { fetchSongDetail(lookup) }
+                }
             }
             is SongDetailAction.OpenAlbum -> Unit
             is SongDetailAction.OpenArtist -> Unit
             SongDetailAction.AddToPlaylist -> Unit
             SongDetailAction.ToggleLike -> toggleLike()
-            is SongDetailAction.PlayQueueItem -> playbackManager.playQueueIndex(action.index)
+            is SongDetailAction.PlayQueueItem ->
+                playbackController.dispatch(PlaybackAction.SkipTo(action.index))
         }
     }
 
     fun onPlaybackAction(action: PlaybackAction) {
-        playbackManager.onAction(action)
+        playbackController.dispatch(action)
     }
 
-    //  OBTENER CANCIÓN
+    private suspend fun fetchSongDetail(lookup: String) {
+        val result = getSongUseCase(lookup)
+        if (lookup != currentHlsMasterKey) return
 
-    private fun fetchSong(lookup: String, hint: SongLookupHint, forceRestart: Boolean) {
-        fetchJob?.cancel()
-        fetchJob = viewModelScope.launch {
-            try {
-                val result = getSongUseCase(lookup, hint)
-
-                if (lookup != currentSongLookup) return@launch
-
-                result.onSuccess { song ->
-                    val songToPlay = refreshIfExpired(song)
-
-                    // Re-validar despues del refresh: el usuario pudo cambiar
-                    // de cancion mientras esperabamos.
-                    if (lookup != currentSongLookup) return@launch
-
-                    if (songToPlay.streamingUrl.isNullOrBlank()) {
-                        handleUnavailableSong(songToPlay, lookup)
-                        return@launch
-                    }
-
-                    songDetailCache.put(lookup, songToPlay)
-                    showSuccess(songToPlay)
-                    playbackManager.playSong(songToPlay, forceRestart = forceRestart)
-                }
-
-                result.onFailure { error ->
-                    _uiState.value = SongDetailUiState.Error(error.toUserMessage())
-                }
-            } catch (error: Exception) {
-                if (lookup == currentSongLookup) {
-                    _uiState.value = SongDetailUiState.Error(error.toUserMessage())
-                }
+        result.onSuccess { song ->
+            songDetailCache.put(lookup, song)
+            showSuccess(song)
+            openSingleIfNeeded(song)
+        }
+        result.onFailure { error ->
+            val current = _uiState.value
+            if (current !is SongDetailUiState.Success) {
+                _uiState.value = SongDetailUiState.Error(
+                    error.message ?: "No se pudo cargar la canción."
+                )
             }
         }
     }
-
-    private suspend fun refreshIfExpired(
-        song: com.essence.essenceapp.feature.song.domain.model.Song
-    ): com.essence.essenceapp.feature.song.domain.model.Song {
-        val urlBlank = song.streamingUrl.isNullOrBlank()
-        val expiredByTimestamp = song.streamingUrlExpiresAt?.isBefore(Instant.now()) ?: false
-        val needsRefresh = urlBlank || expiredByTimestamp
-
-        if (!needsRefresh) return song
-
-        val videoId = song.hlsMasterKey
-        val refreshResult = refreshStreamingUrlUseCase(
-            currentSong = song,
-            isStillCurrent = { currentSongLookup == videoId }
-        )
-        return refreshResult.getOrDefault(song)
-    }
-
-    // like
 
     private fun toggleLike() {
         val current = _uiState.value as? SongDetailUiState.Success ?: return
@@ -255,16 +220,18 @@ class SongDetailViewModel @Inject constructor(
             result.onSuccess {
                 val latest = _uiState.value as? SongDetailUiState.Success ?: return@onSuccess
                 val updatedSong = latest.song.copy(isLiked = !current.song.isLiked)
-                currentSongLookup?.let { songDetailCache.put(it, updatedSong) }
+                currentHlsMasterKey?.let { songDetailCache.put(it, updatedSong) }
                 _uiState.value = latest.copy(
                     song = updatedSong,
                     isLikeSubmitting = false
                 )
 
-                val nowPlayingId = playbackManager.nowPlaying.value?.songId
-                if (nowPlayingId == updatedSong.id) {
-                    playbackManager.updateLikedState(updatedSong.isLiked)
-                }
+                playbackController.dispatch(
+                    PlaybackAction.SetCurrentLike(
+                        songId = updatedSong.id,
+                        isLiked = updatedSong.isLiked
+                    )
+                )
             }
 
             result.onFailure {
@@ -273,39 +240,101 @@ class SongDetailViewModel @Inject constructor(
         }
     }
 
-    // HELPERS
+    private fun findPreviewItem(lookup: String): PlaybackQueueItem? {
+        val queue = playbackController.queue.value
+        return queue?.items?.firstOrNull { it.hlsMasterKey == lookup }
+            ?: queueCache.findItem(lookup)?.toQueueItem()
+    }
 
-    private fun showSuccess(song: com.essence.essenceapp.feature.song.domain.model.Song) {
-        val queue = playbackManager.queue.value
+    private fun showPreviewFor(
+        lookup: String,
+        previewItem: PlaybackQueueItem? = findPreviewItem(lookup)
+    ) {
+        val queue = playbackController.queue.value
+        if (previewItem != null) {
+            _uiState.value = SongDetailUiState.LoadingNextSong(
+                title = previewItem.title,
+                artistName = previewItem.artistName,
+                imageKey = previewItem.imageKey,
+                durationMs = previewItem.durationMs,
+                playback = playbackController.uiState.value,
+                queueItems = queue?.items ?: emptyList(),
+                queueCurrentIndex = queue?.currentIndex ?: -1
+            )
+        } else {
+            _uiState.value = SongDetailUiState.Loading
+        }
+    }
+
+    private fun showSuccess(song: Song) {
+        val queue = playbackController.queue.value
         _uiState.value = SongDetailUiState.Success(
             song = song,
-            playback = playbackManager.uiState.value,
+            playback = playbackController.uiState.value,
             isLikeSubmitting = false,
             queueItems = queue?.items ?: emptyList(),
             queueCurrentIndex = queue?.currentIndex ?: -1
         )
     }
 
+    private fun showResolvedSongIfAvailable(lookup: String): Boolean {
+        val resolved = playbackController.currentSong.value
+        if (resolved != null && resolved.hlsMasterKey == lookup) {
+            songDetailCache.put(lookup, resolved)
+            showSuccess(resolved)
+            return true
+        }
+
+        val current = _uiState.value as? SongDetailUiState.Success
+        if (current?.song?.hlsMasterKey == lookup) return true
+
+        val cached = songDetailCache.get(lookup)
+        if (cached != null) {
+            showSuccess(cached)
+            return true
+        }
+
+        return false
+    }
+
     private fun showLoadingForNextSong(info: NowPlayingInfo) {
+        val queue = playbackController.queue.value
         _uiState.value = SongDetailUiState.LoadingNextSong(
-            title = info.title,
-            artistName = info.artistName,
-            imageKey = info.imageKey,
-            durationMs = info.durationMs,
-            playback = playbackManager.uiState.value.copy(
-                durationMs = info.durationMs
-            )
+            title = info.item.title,
+            artistName = info.item.artistName,
+            imageKey = info.item.imageKey,
+            durationMs = info.item.durationMs,
+            playback = playbackController.uiState.value,
+            queueItems = queue?.items ?: emptyList(),
+            queueCurrentIndex = queue?.currentIndex ?: -1
         )
     }
 
-    private suspend fun handleUnavailableSong(
-        song: com.essence.essenceapp.feature.song.domain.model.Song,
-        lookup: String
-    ) {
-        _uiState.value = SongDetailUiState.Unavailable(songTitle = song.title)
-        delay(3_000L)
-        if (lookup == currentSongLookup) {
-            playbackManager.onAction(PlaybackAction.Next)
-        }
+    private fun isCurrentPlaybackLookup(lookup: String): Boolean {
+        val nowPlayingItem = playbackController.nowPlaying.value?.item
+        val queueCurrentItem = playbackController.queue.value?.current
+        val resolvedSong = playbackController.currentSong.value
+
+        return nowPlayingItem?.hlsMasterKey == lookup ||
+            queueCurrentItem?.hlsMasterKey == lookup ||
+            resolvedSong?.hlsMasterKey == lookup
+    }
+
+    private fun openSingleIfNeeded(song: Song) {
+        val queue = playbackController.queue.value
+        val alreadyInPlayback = queue?.items?.any {
+            it.hlsMasterKey == song.hlsMasterKey
+        } == true
+        if (alreadyInPlayback) return
+
+        playbackController.dispatch(
+            PlaybackAction.Open(
+                PlaybackOpenRequest(
+                    items = listOf(song.toQueueItem()),
+                    startIndex = 0,
+                    source = PlaybackSource(PlaybackSource.SourceType.SINGLE)
+                )
+            )
+        )
     }
 }

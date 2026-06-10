@@ -6,8 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.essence.essenceapp.feature.artist.ui.components.ArtistDetailContent
-import com.essence.essenceapp.shared.playback.mapper.toQueueItems
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackSource
+import com.essence.essenceapp.feature.playback.mapper.toQueueItems
 
 @Composable
 fun ArtistDetailScreen(
@@ -36,14 +37,16 @@ fun ArtistDetailScreen(
                     val songs = (state as? ArtistDetailUiState.Success)
                         ?.artist?.songs.orEmpty()
                     val queueItems = songs.toQueueItems()
-                    val index = songs.indexOfFirst { it.detailLookup == action.songLookup }
+                    val index = songs.indexOfFirst { it.detailLookup == action.hlsMasterKey }
                         .coerceAtLeast(0)
                     onOpenSong(
                         PlaybackOpenRequest(
-                            songLookup = action.songLookup,
-                            queue = queueItems,
+                            items = queueItems,
                             startIndex = index,
-                            sourceKey = "artist:$artistLookup"
+                            source = PlaybackSource(
+                                type = PlaybackSource.SourceType.ARTIST,
+                                sourceId = artistLookup
+                            )
                         )
                     )
                 }

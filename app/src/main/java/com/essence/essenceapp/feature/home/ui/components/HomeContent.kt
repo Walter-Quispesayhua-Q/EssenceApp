@@ -57,7 +57,7 @@ import com.essence.essenceapp.ui.theme.LuxeGold
 import com.essence.essenceapp.ui.theme.MutedTeal
 import com.essence.essenceapp.ui.theme.PureWhite
 import com.essence.essenceapp.ui.theme.SoftRose
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
 
 private const val MAX_HOME_ITEMS = 10
 private val SECTION_SPACING = 24.dp

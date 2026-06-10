@@ -35,10 +35,10 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.essence.essenceapp.feature.playback.domain.PlaybackAction
+import com.essence.essenceapp.feature.playback.domain.PlaybackController
+import com.essence.essenceapp.feature.playback.ui.miniplayer.MiniPlayer
 import com.essence.essenceapp.feature.song.navigation.SongRoutes
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
-import com.essence.essenceapp.feature.song.ui.playback.manager.PlaybackManager
-import com.essence.essenceapp.feature.song.ui.playback.components.MiniPlayer
 import com.essence.essenceapp.ui.shell.components.AppBottomBar
 import com.essence.essenceapp.ui.shell.components.MainTabsNavHost
 import com.essence.essenceapp.ui.shell.model.TopLevelDestination
@@ -50,8 +50,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainShellScreen(
+    playbackController: PlaybackController,
     modifier: Modifier = Modifier,
-    playbackManager: PlaybackManager,
     onRequireAuth: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -60,8 +60,8 @@ fun MainShellScreen(
     val isLoggedIn by shellViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val nowPlaying by playbackManager.nowPlaying.collectAsStateWithLifecycle()
-    val playback by playbackManager.uiState.collectAsStateWithLifecycle()
+    val nowPlaying by playbackController.nowPlaying.collectAsStateWithLifecycle()
+    val playback by playbackController.uiState.collectAsStateWithLifecycle()
     val hasMiniPlayer = nowPlaying != null
 
     val currentRoute = navBackStackEntry?.destination?.route.orEmpty()
@@ -73,10 +73,10 @@ fun MainShellScreen(
 
     LaunchedEffect(Unit) {
         shellViewModel.sessionExpiredEvent.collectLatest {
-            playbackManager.clearNowPlaying()
+            playbackController.dispatch(PlaybackAction.Stop)
             launch {
                 snackbarHostState.showSnackbar(
-                    message = "Tu sesión ha expirado. Vuelve a iniciar sesión."
+                    message = "Tu sesion ha expirado. Vuelve a iniciar sesion."
                 )
             }
             onRequireAuth()
@@ -87,7 +87,7 @@ fun MainShellScreen(
         shellViewModel.authRequiredEvent.collectLatest {
             launch {
                 snackbarHostState.showSnackbar(
-                    message = "Inicia sesión para continuar."
+                    message = "Inicia sesion para continuar."
                 )
             }
             onRequireAuth()
@@ -98,14 +98,40 @@ fun MainShellScreen(
         shellViewModel.guestPlayEvent.collectLatest {
             launch {
                 val result = snackbarHostState.showSnackbar(
-                    message = "Inicia sesión para reproducir música",
-                    actionLabel = "Iniciar sesión",
+                    message = "Inicia sesion para reproducir musica",
+                    actionLabel = "Iniciar sesion",
                     withDismissAction = true,
                     duration = SnackbarDuration.Short
                 )
                 if (result == SnackbarResult.ActionPerformed) {
                     onRequireAuth()
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        shellViewModel.connectivityEvent.collectLatest {
+            launch {
+                snackbarHostState.showSnackbar(
+                    message = "Conexion inestable, reintentando...",
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        shellViewModel.unavailableSkippingEvent.collectLatest { title ->
+            val routeAtEmission = navController.currentDestination?.route.orEmpty()
+            val isOnSongDetail = routeAtEmission.startsWith(songDetailBaseRoute)
+            if (isOnSongDetail) return@collectLatest
+
+            launch {
+                snackbarHostState.showSnackbar(
+                    message = "$title no disponible, saltando a la siguiente...",
+                    duration = SnackbarDuration.Long
+                )
             }
         }
     }
@@ -175,7 +201,7 @@ fun MainShellScreen(
                                     nowPlaying = info,
                                     playback = playback,
                                     onTogglePlay = {
-                                        playbackManager.onAction(
+                                        playbackController.dispatch(
                                             if (playback.isPlaying || playback.isBuffering) {
                                                 PlaybackAction.Pause
                                             } else {
@@ -184,16 +210,18 @@ fun MainShellScreen(
                                         )
                                     },
                                     onNext = {
-                                        playbackManager.onAction(PlaybackAction.Next)
+                                        playbackController.dispatch(PlaybackAction.Next)
                                     },
                                     onPrevious = {
-                                        playbackManager.onAction(PlaybackAction.Previous)
+                                        playbackController.dispatch(PlaybackAction.Previous)
                                     },
                                     onDismiss = {
-                                        playbackManager.clearNowPlaying()
+                                        playbackController.dispatch(PlaybackAction.Stop)
                                     },
                                     onTap = {
-                                        navController.navigate(SongRoutes.detail(info.songLookup))
+                                        navController.navigate(
+                                            SongRoutes.detail(info.item.hlsMasterKey)
+                                        )
                                     },
                                     modifier = Modifier
                                         .padding(horizontal = 16.dp)
@@ -210,7 +238,10 @@ fun MainShellScreen(
                                     onRequireAuth()
                                     return@AppBottomBar
                                 }
-                                val isReselect = selectedTopLevelGraphRoute == destination.graphRoute
+
+                                val isReselect =
+                                    selectedTopLevelGraphRoute == destination.graphRoute
+
                                 if (isReselect) {
                                     navController.popBackStack(
                                         route = destination.graphRoute,
@@ -242,7 +273,7 @@ fun MainShellScreen(
                     MainTabsNavHost(
                         navController = navController,
                         modifier = Modifier.fillMaxSize(),
-                        playbackManager = playbackManager,
+                        playbackController = playbackController,
                         isLoggedIn = isLoggedIn,
                         onRequireAuth = onRequireAuth,
                         onGuestPlayAttempt = shellViewModel::notifyGuestPlayAttempt

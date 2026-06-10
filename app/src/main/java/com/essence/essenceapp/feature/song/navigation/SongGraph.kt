@@ -18,7 +18,7 @@ fun NavGraphBuilder.songGraph(
     composable(
         route = SongRoutes.SONG_DETAIL,
         arguments = listOf(
-            navArgument(SongRoutes.SONG_LOOKUP) { type = NavType.StringType }
+            navArgument(SongRoutes.HLS_MASTER_KEY) { type = NavType.StringType }
         ),
         enterTransition = { songDetailEnter() },
         exitTransition = { songDetailExit() },
@@ -33,14 +33,14 @@ fun NavGraphBuilder.songGraph(
             return@composable
         }
 
-        val songLookup = backStackEntry.arguments?.getString(SongRoutes.SONG_LOOKUP)
-        if (songLookup.isNullOrBlank()) {
+        val hlsMasterKey = backStackEntry.arguments?.getString(SongRoutes.HLS_MASTER_KEY)
+        if (hlsMasterKey.isNullOrBlank()) {
             LaunchedEffect(Unit) { navController.popBackStack() }
             return@composable
         }
 
         SongDetailScreen(
-            songLookup = songLookup,
+            hlsMasterKey = hlsMasterKey,
             onBack = { navController.popBackStack() },
             onOpenArtist = { artistLookup ->
                 navController.navigate(ArtistRoutes.detail(artistLookup))

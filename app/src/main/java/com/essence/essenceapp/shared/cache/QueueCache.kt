@@ -31,10 +31,10 @@ class QueueCache @Inject constructor() {
         }
     }
 
-    fun findItem(songLookup: String): SongSimple? = synchronized(sources) {
+    fun findItem(hlsMasterKey: String): SongSimple? = synchronized(sources) {
         val ordered = sources.entries.toList().asReversed()
         for ((_, items) in ordered) {
-            val match = items.find { it.hlsMasterKey == songLookup }
+            val match = items.find { it.hlsMasterKey == hlsMasterKey }
             if (match != null) return match
         }
         null

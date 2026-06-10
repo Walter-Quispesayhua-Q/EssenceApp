@@ -43,11 +43,15 @@ import com.essence.essenceapp.feature.artist.domain.model.ArtistSimple
 import com.essence.essenceapp.feature.song.domain.model.Song
 import com.essence.essenceapp.feature.song.ui.SongDetailAction
 import com.essence.essenceapp.feature.song.ui.SongDetailUiState
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackRepeatMode
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackUiState
-import com.essence.essenceapp.feature.song.ui.playback.components.PlaybackManagerContent
-import com.essence.essenceapp.shared.playback.model.PlaybackQueueItem
+import com.essence.essenceapp.feature.playback.domain.PlaybackAction
+import com.essence.essenceapp.feature.playback.domain.PlaybackPositionInfo
+import com.essence.essenceapp.feature.playback.domain.PlaybackRepeatMode
+import com.essence.essenceapp.feature.playback.domain.PlaybackShuffleMode
+import com.essence.essenceapp.feature.playback.domain.PlaybackState
+import com.essence.essenceapp.feature.playback.domain.PlaybackUiState
+import com.essence.essenceapp.feature.playback.engine.AudioOutputType
+import com.essence.essenceapp.feature.song.ui.components.playbackpanel.PlaybackManagerContent
+import com.essence.essenceapp.feature.playback.domain.PlaybackQueueItem
 import com.essence.essenceapp.shared.ui.components.status.error.AppErrorState
 import com.essence.essenceapp.ui.theme.EssenceAppTheme
 import java.time.LocalDate
@@ -74,8 +78,12 @@ fun SongDetailContent(
                 title = state.title,
                 artistName = state.artistName,
                 imageKey = state.imageKey,
+                durationMs = state.durationMs,
                 playback = state.playback,
-                onPlaybackAction = onPlaybackAction
+                queueItems = state.queueItems,
+                queueCurrentIndex = state.queueCurrentIndex,
+                onPlaybackAction = onPlaybackAction,
+                onQueueItemClick = { index -> onAction(SongDetailAction.PlayQueueItem(index)) }
             )
 
             is SongDetailUiState.Error -> AppErrorState(
@@ -131,7 +139,7 @@ private fun SuccessState(
             item {
                 SongHero(
                     song = song,
-                    audioOutput = playback.audioOutput,
+                    audioOutput = AudioOutputType.UNKNOWN,
                     isPulsing = playback.isPlaying && !playback.isBuffering,
                     onArtistClick = { lookup ->
                         onAction(SongDetailAction.OpenArtist(lookup))
@@ -180,7 +188,7 @@ private fun SuccessState(
 @Composable
 private fun DetailSwipePager(
     song: Song,
-    queueItems: List<com.essence.essenceapp.shared.playback.model.PlaybackQueueItem>,
+    queueItems: List<PlaybackQueueItem>,
     queueCurrentIndex: Int,
     isPulsing: Boolean,
     isBuffering: Boolean,
@@ -313,7 +321,7 @@ private enum class SwipePage { Queue, Info }
 private fun RenderSwipePage(
     kind: SwipePage,
     song: Song,
-    queueItems: List<com.essence.essenceapp.shared.playback.model.PlaybackQueueItem>,
+    queueItems: List<PlaybackQueueItem>,
     queueCurrentIndex: Int,
     isPulsing: Boolean,
     isBuffering: Boolean,
@@ -398,11 +406,14 @@ private fun PlayingPreview() {
         SongDetailContent(
             state = SongDetailUiState.Success(
                 song = previewSong,
-                playback = PlaybackUiState(
-                    isPlaying = true,
-                    positionMs = 72_000L,
-                    durationMs = 210_000L,
-                    repeatMode = PlaybackRepeatMode.One
+                playback = PlaybackUiState.Empty.copy(
+                    playbackState = PlaybackState.Playing,
+                    position = PlaybackPositionInfo(
+                        positionMs = 72_000L,
+                        durationMs = 210_000L,
+                        bufferedMs = 90_000L
+                    ),
+                    repeatMode = PlaybackRepeatMode.ONE
                 ),
                 isLikeSubmitting = false
             ),
@@ -419,11 +430,14 @@ private fun PausedPreview() {
         SongDetailContent(
             state = SongDetailUiState.Success(
                 song = previewSong,
-                playback = PlaybackUiState(
-                    isPlaying = false,
-                    positionMs = 45_000L,
-                    durationMs = 210_000L,
-                    repeatMode = PlaybackRepeatMode.Off
+                playback = PlaybackUiState.Empty.copy(
+                    playbackState = PlaybackState.Paused,
+                    position = PlaybackPositionInfo(
+                        positionMs = 45_000L,
+                        durationMs = 210_000L,
+                        bufferedMs = 90_000L
+                    ),
+                    repeatMode = PlaybackRepeatMode.OFF
                 ),
                 isLikeSubmitting = false
             ),

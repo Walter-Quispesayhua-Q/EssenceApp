@@ -3,16 +3,13 @@ package com.essence.essenceapp.feature.song.domain.repository
 import com.essence.essenceapp.feature.song.domain.model.Song
 
 interface SongRepository {
-    suspend fun getSong(songLookup: String, forceRefresh: Boolean = false): Song?
+    suspend fun getSong(hlsMasterKey: String, forceRefresh: Boolean = false): Song?
 
-    suspend fun syncSong(videoId: String): Song?
+    suspend fun syncSong(hlsMasterKey: String): Song?
 
-    suspend fun resolveSong(songLookup: String, persistedId: Long?): Song?
+    suspend fun refreshStreamingUrl(hlsMasterKey: String, songId: Long): Song?
 
-    suspend fun refreshStreamingUrl(
-        currentSong: Song,
-        isStillCurrent: () -> Boolean
-    ): Song?
     suspend fun addLikeSong(songId: Long)
+
     suspend fun deleteLikeSong(songId: Long)
 }

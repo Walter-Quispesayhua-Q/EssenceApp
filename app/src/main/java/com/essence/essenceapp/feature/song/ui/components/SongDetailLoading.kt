@@ -50,9 +50,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 import com.essence.essenceapp.core.network.resolveImageUrl
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackAction
-import com.essence.essenceapp.feature.song.ui.playback.PlaybackUiState
-import com.essence.essenceapp.feature.song.ui.playback.components.PlaybackManagerContent
+import com.essence.essenceapp.feature.playback.domain.PlaybackAction
+import com.essence.essenceapp.feature.playback.domain.PlaybackPositionInfo
+import com.essence.essenceapp.feature.playback.domain.PlaybackState
+import com.essence.essenceapp.feature.playback.domain.PlaybackUiState
+import com.essence.essenceapp.feature.song.ui.components.playbackpanel.PlaybackManagerContent
+import com.essence.essenceapp.feature.playback.domain.PlaybackQueueItem
 import com.essence.essenceapp.ui.theme.GraphiteSurface
 import com.essence.essenceapp.ui.theme.LuxeGold
 import com.essence.essenceapp.ui.theme.MidnightBlack
@@ -231,7 +234,7 @@ internal fun LoadingState(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 PlaybackManagerContent(
-                    state = PlaybackUiState(isBuffering = true),
+                    state = PlaybackUiState.Empty.copy(playbackState = PlaybackState.Buffering),
                     onAction = onPlaybackAction,
                     showMetaHeader = false
                 )
@@ -324,14 +327,26 @@ internal fun LoadingNextSongState(
     title: String,
     artistName: String,
     imageKey: String?,
+    durationMs: Long,
     playback: PlaybackUiState,
-    onPlaybackAction: (PlaybackAction) -> Unit
+    queueItems: List<PlaybackQueueItem> = emptyList(),
+    queueCurrentIndex: Int = -1,
+    onPlaybackAction: (PlaybackAction) -> Unit,
+    onQueueItemClick: (Int) -> Unit = {}
 ) {
     val imageUrl = resolveImageUrl(imageKey)
     val brush = rememberShimmerBrush()
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val safeBottom = navBottom + 20.dp
+    val loadingPlayback = playback.copy(
+        position = PlaybackPositionInfo(
+            positionMs = 0L,
+            durationMs = durationMs.coerceAtLeast(0L),
+            bufferedMs = 0L
+        ),
+        playbackState = PlaybackState.Buffering
+    )
 
     Box(
         modifier = modifier
@@ -475,51 +490,62 @@ internal fun LoadingNextSongState(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 PlaybackManagerContent(
-                    state = playback.copy(isBuffering = true),
+                    state = loadingPlayback,
                     onAction = onPlaybackAction,
                     showMetaHeader = false
                 )
             }
 
             item {
-                Spacer(modifier = Modifier.height(18.dp))
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    color = GraphiteSurface.copy(alpha = 0.40f),
-                    border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.07f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                Spacer(modifier = Modifier.height(14.dp))
+                if (queueItems.isNotEmpty()) {
+                    SongQueueIsland(
+                        items = queueItems,
+                        currentIndex = queueCurrentIndex,
+                        isPulsing = false,
+                        isBuffering = true,
+                        onItemClick = onQueueItemClick,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        color = GraphiteSurface.copy(alpha = 0.40f),
+                        border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.07f))
                     ) {
-                        repeat(3) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                ShimmerBox(
-                                    modifier = Modifier.size(36.dp),
-                                    brush = brush,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            repeat(3) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
                                     ShimmerBox(
-                                        modifier = Modifier
-                                            .width(60.dp)
-                                            .height(10.dp),
-                                        brush = brush
+                                        modifier = Modifier.size(36.dp),
+                                        brush = brush,
+                                        shape = RoundedCornerShape(12.dp)
                                     )
-                                    ShimmerBox(
-                                        modifier = Modifier
-                                            .width(140.dp)
-                                            .height(13.dp),
-                                        brush = brush
-                                    )
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        ShimmerBox(
+                                            modifier = Modifier
+                                                .width(60.dp)
+                                                .height(10.dp),
+                                            brush = brush
+                                        )
+                                        ShimmerBox(
+                                            modifier = Modifier
+                                                .width(140.dp)
+                                                .height(13.dp),
+                                            brush = brush
+                                        )
+                                    }
                                 }
                             }
                         }

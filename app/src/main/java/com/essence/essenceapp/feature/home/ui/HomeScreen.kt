@@ -11,7 +11,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.essence.essenceapp.feature.home.ui.components.HomeContent
 import com.essence.essenceapp.feature.home.ui.components.HomeTopBar
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
 
 @Composable
 fun HomeScreen(

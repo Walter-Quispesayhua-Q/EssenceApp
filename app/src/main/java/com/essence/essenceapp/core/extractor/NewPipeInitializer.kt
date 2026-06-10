@@ -45,7 +45,7 @@ object NewPipeInitializer {
                         ContentCountry("US")
                     )
                     initialized = true
-                    Log.d(TAG, "NewPipe initialized (sharedClient=${injectedClient != null})")
+                    Log.d(TAG, "NewPipe initialized (sharedClient=${injectedClient != null}, iosClient=false)")
                 }
             }
         }

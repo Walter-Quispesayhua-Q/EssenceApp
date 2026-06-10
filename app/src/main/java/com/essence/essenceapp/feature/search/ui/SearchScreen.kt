@@ -10,7 +10,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.essence.essenceapp.feature.search.ui.components.SearchContent
 import com.essence.essenceapp.feature.search.ui.components.SearchTopBar
-import com.essence.essenceapp.shared.playback.model.PlaybackOpenRequest
+import com.essence.essenceapp.feature.playback.domain.PlaybackOpenRequest
 
 @Composable
 fun SearchScreen(
@@ -28,6 +28,8 @@ fun SearchScreen(
         is SearchUiState.Idle -> ""
     }
 
+    val isSearching = (state as? SearchUiState.Editing)?.isSubmitting == true
+
     val activeTypeLabel = when (val current = state) {
         is SearchUiState.Editing -> resolveTypeLabel(current.form.type, current.categories)
         is SearchUiState.Success -> resolveTypeLabel(
@@ -41,6 +43,7 @@ fun SearchScreen(
         topBar = {
             SearchTopBar(
                 query = query,
+                isSearching = isSearching,
                 onQueryChange = { viewModel.onAction(SearchAction.QueryChanged(it)) },
                 onSearch = { viewModel.onAction(SearchAction.Submit) },
                 activeTypeLabel = activeTypeLabel

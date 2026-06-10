@@ -3,7 +3,7 @@ package com.essence.essenceapp.feature.playlist.ui.addsongs.extractor
 import java.time.LocalDate
 
 data class AddSongMetadata(
-    val videoId: String,
+    val hlsMasterKey: String,
     val title: String,
     val durationMs: Int,
     val uploaderName: String,

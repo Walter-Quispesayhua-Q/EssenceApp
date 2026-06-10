@@ -21,8 +21,8 @@ android {
         applicationId = "com.essence.essenceapp"
         minSdk = 28
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.1.1"
+        versionCode = 7
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
